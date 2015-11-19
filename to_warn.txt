@@ -1,0 +1,3 @@
+## warnings (input checks) to be made for the code
+
+check if the input density is log-concave
