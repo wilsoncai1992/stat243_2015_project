@@ -74,13 +74,13 @@ S_inv <- function(cdf, abscissae.result, z, norm.constant){
   
   j.last <- j[j==length(cum.mass)]
   # x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (delta.mass[j==length(cum.mass)] - tail(mass.grid, 1))) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
-  x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (1.0 - cdf[j==length(cum.mass)])*as.integer((1.0 - cdf[j==length(cum.mass)]) >= 0)) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
+  x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (cdf[j==length(cum.mass)] - 1.0)*as.integer((cdf[j==length(cum.mass)] - 1.0) <= 0)) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
   
   return(x.hat)
 }
 
 # cdf <- c(0,cum.mass)
-# cdf <- seq(0,1, by = 0.1)
+cdf <- seq(0,1, by = 0.1)
 # x.hat <- S_inv(cdf, abscissae.result, z, norm.constant)
 
 
@@ -98,4 +98,6 @@ du.normalized(x, abscissae.result, z, norm.constant)
 
 haha <- function(x){ exp(du.normalized(x, abscissae.result, z, norm.constant))}
 curve(haha, from = -3, to = 3)
-lines(density(rs(1e5, S_inv, abscissae.result, z, norm.constant)), lty = 2 , col = 'red')
+
+lines(density(rs(1e6, S_inv, abscissae.result, z, norm.constant)), lty = 2 , col = 'red')
+
