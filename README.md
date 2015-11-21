@@ -5,7 +5,7 @@ Jianbo Chen
 
 Chenyu Wang
 
-Benjamin Huber-Rodriguez
+HR Huber-Rodriguez
 
 Weixin Cai
 
