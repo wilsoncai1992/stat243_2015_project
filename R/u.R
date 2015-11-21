@@ -80,7 +80,7 @@ S_inv <- function(cdf, abscissae.result, z, norm.constant){
 }
 
 # cdf <- c(0,cum.mass)
-cdf <- seq(0,1, by = 0.1)
+# cdf <- seq(0,1, by = 0.1)
 # x.hat <- S_inv(cdf, abscissae.result, z, norm.constant)
 
 
