@@ -2,8 +2,10 @@
 
 # f <- dnorm()
 # h <- NULL
+
 # k <- 100
 # n <- 1000
+# domain <- c(-Inf, Inf)
 #-----------------------------------------------------------------------------------------
 # TEMPORARY INPUT VALUE
 h <- function(x){
@@ -11,7 +13,15 @@ h <- function(x){
 }
 k <- 100
 n <- 1000
-
+#-----------------------------------------------------------------------------------------
+#### START OF FUNCTION ####
+if(is.null(h)){
+  h <- function(x){
+    return(log(f(x)))
+  }
+}
+#-----------------------------------------------------------------------------------------
+# Fixed k points to create abscissae
 abscissae.grid <- seq(-5, 5, length.out = 10)
 gen.abscissae <- function(abscissae.grid, h){
   library(numDeriv)
@@ -29,6 +39,7 @@ diff.h.deriv <- diff(abscissae.result[,3])
 
 z <- (diff.h - diff.xh.deriv)/ (-diff.h.deriv)
 #-----------------------------------------------------------------------------------------
+# Integate over exponentiated upper envelope
 all.mass <- sum(
   rep(c(-1, 1), length(abscissae.result[,3])) *
     rep(1/abscissae.result[,3], each = 2) * 
@@ -36,10 +47,10 @@ all.mass <- sum(
           rep(abscissae.result[,3], each = 2) * 
           (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)))
 )
-
+# Normalize total density such that sum to 1
 norm.constant <- -log(all.mass)
 
-
+# Normaized version of upper envelope (not exponentiated)
 du.normalized <- function(x, abscissae.result, z, norm.constant){
   j <- sapply(x, function(it) min(which(it <= c(z, Inf))))
   dens.u <- abscissae.result[j, 2] + (x - abscissae.result[j, 1]) * abscissae.result[j, 3] + norm.constant
@@ -48,7 +59,9 @@ du.normalized <- function(x, abscissae.result, z, norm.constant){
 
 
 #-----------------------------------------------------------------------------------------
-
+# Inverse sampling of upper enelope density
+#-----------------------------------------------------------------------------------------
+# Inverse cdf of S
 S_inv <- function(cdf, abscissae.result, z, norm.constant){
   mass.grid <- rowSums(matrix(rep(c(-1, 1), length(abscissae.result[,3])) *
                                 rep(1/abscissae.result[,3], each = 2) * 
@@ -79,12 +92,8 @@ S_inv <- function(cdf, abscissae.result, z, norm.constant){
   return(x.hat)
 }
 
-# cdf <- c(0,cum.mass)
-# cdf <- seq(0,1, by = 0.1)
-# x.hat <- S_inv(cdf, abscissae.result, z, norm.constant)
 
-
-n.sim <- 1000
+# Inverse sampling function
 rs <- function(n.sim, S_inv, abscissae.result, z, norm.constant){
   u.temp <- runif(n = n.sim)
   x.temp <- S_inv(u.temp, abscissae.result, z, norm.constant)
