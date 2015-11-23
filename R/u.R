@@ -101,12 +101,12 @@ rs <- function(n.sim, S_inv, abscissae.result, z, norm.constant){
 }
 
 #-----------------------------------------------------------------------------------------
-rs(n.sim, S_inv, abscissae.result, z, norm.constant)
+# rs(n.sim, S_inv, abscissae.result, z, norm.constant)
 x <- seq(-6, 6, by = 0.1)
 du.normalized(x, abscissae.result, z, norm.constant)
 
 haha <- function(x){ exp(du.normalized(x, abscissae.result, z, norm.constant))}
 curve(haha, from = -3, to = 3)
 
-lines(density(rs(1e6, S_inv, abscissae.result, z, norm.constant)), lty = 2 , col = 'red')
-
+lines(density(rs(n, S_inv, abscissae.result, z, norm.constant)), lty = 2 , col = 'red')
+lines(density(rs(1e5, S_inv, abscissae.result, z, norm.constant)), lty = 2 , col = 'red')
