@@ -22,7 +22,7 @@ if(is.null(h)){
 }
 #-----------------------------------------------------------------------------------------
 # Fixed k points to create abscissae
-abscissae.grid <- seq(-5, 5, length.out = 10)
+abscissae.grid <- seq(-5, 5, length.out = k)
 gen.abscissae <- function(abscissae.grid, h){
   library(numDeriv)
   h.x <- h(abscissae.grid)
