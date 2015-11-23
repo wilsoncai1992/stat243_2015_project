@@ -50,6 +50,13 @@ all.mass <- sum(
 # Normalize total density such that sum to 1
 norm.constant <- -log(all.mass)
 
+# UN-normaized version of upper envelope (not exponentiated)
+du.unnormalized <- function(x, abscissae.result, z){
+  j <- sapply(x, function(it) min(which(it <= c(z, Inf))))
+  dens.u <- abscissae.result[j, 2] + (x - abscissae.result[j, 1]) * abscissae.result[j, 3]
+  return(dens.u)
+}
+
 # Normaized version of upper envelope (not exponentiated)
 du.normalized <- function(x, abscissae.result, z, norm.constant){
   j <- sapply(x, function(it) min(which(it <= c(z, Inf))))
@@ -105,6 +112,8 @@ rs <- function(n.sim, S_inv, abscissae.result, z, norm.constant){
 x <- seq(-6, 6, by = 0.1)
 du.normalized(x, abscissae.result, z, norm.constant)
 
+haha2 <- function(x){ exp(du.unnormalized(x, abscissae.result, z))}
+curve(haha2, from = -3, to = 3)
 haha <- function(x){ exp(du.normalized(x, abscissae.result, z, norm.constant))}
 curve(haha, from = -3, to = 3)
 
