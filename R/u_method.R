@@ -34,8 +34,8 @@ gen.abscissae <- function(abscissae.grid, h){
 # }
 
 compute_norm_constant = function(abscissae.result, z){
-  intermediate <- 
-    intermediate[is.infinite(intermediate)] <- 0
+  intermediate <- rep(1/abscissae.result[,3], each = 2)
+  intermediate[is.infinite(intermediate)] <- 0
   all.mass <- sum(
     rep(c(-1, 1), length(abscissae.result[,3])) *
       intermediate * 
