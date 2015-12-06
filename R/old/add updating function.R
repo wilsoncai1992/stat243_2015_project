@@ -136,8 +136,8 @@ lines(density(rs(1e5, S_inv, abscissae.result, z, norm.constant)), lty = 2 , col
 #Example function for f
 h <- function(x){
   return(log(dt(x, df = 10)))}
-n=10
-k=4
+n=1000
+k=40
 
 #---------------------------------------------
 #This is the main engine.  It takes the log of a function (h), a required number of
@@ -288,7 +288,7 @@ update_coeff <- function(coefficients,x_star,updated_abscissae.result){
 }
 
 # Test the update_coeffi function.
-k=4
+k=40
 finalValues <- c()
 abscissae.grid <- seq(-5, 5, length.out = k)
 abscissae.result <- gen.abscissae(abscissae.grid, h)
