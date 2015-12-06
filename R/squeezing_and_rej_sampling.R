@@ -112,3 +112,5 @@ lupdater <- function(Tk){
   return(coefficients)
 }
     
+
+

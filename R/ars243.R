@@ -11,7 +11,7 @@
 h <- function(x){
   return(log(dnorm(x)))
 }
-k <- 100
+k <- 4
 n <- 1000
 #-----------------------------------------------------------------------------------------
 #### START OF FUNCTION ####
@@ -20,129 +20,13 @@ if(is.null(h)){
     return(log(f(x)))
   }
 }
-#-----------------------------------------------------------------------------------------
-#
-# Fixed k points to create abscissae
-abscissae.grid <- seq(-5, 5, length.out = k)
-gen.abscissae <- function(abscissae.grid, h){
-  library(numDeriv)
-  h.x <- h(abscissae.grid)
-  h.deriv <- grad(func = h, x = abscissae.grid)
-  abscissae.result <- cbind(abscissae.grid, h.x, h.deriv)
-  return(abscissae.result)
-}
-diff.h <- diff(abscissae.result[,2])
-xh.deriv <- abscissae.result[,1] * abscissae.result[,3]
-diff.xh.deriv <- diff(xh.deriv)
-diff.h.deriv <- diff(abscissae.result[,3])
 
-z <- (diff.h - diff.xh.deriv)/ (-diff.h.deriv)
-#-----------------------------------------------------------------------------------------
-# Integate over exponentiated upper envelope
-all.mass <- sum(
-  rep(c(-1, 1), length(abscissae.result[,3])) *
-    rep(1/abscissae.result[,3], each = 2) * 
-    exp(rep(abscissae.result[,2], each = 2) + 
-          rep(abscissae.result[,3], each = 2) * 
-          (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)))
-)
-# Normalize total density such that sum to 1
-norm.constant <- -log(all.mass)
-
-# UN-normaized version of upper envelope (not exponentiated)
-du.unnormalized <- function(x, abscissae.result, z){
-  j <- sapply(x, function(it) min(which(it <= c(z, Inf))))
-  dens.u <- abscissae.result[j, 2] + (x - abscissae.result[j, 1]) * abscissae.result[j, 3]
-  return(dens.u)
-}
-
-# Normaized version of upper envelope (not exponentiated).
-du.normalized <- function(x, abscissae.result, z, norm.constant){
-  j <- sapply(x, function(it) min(which(it <= c(z, Inf))))
-  dens.u <- abscissae.result[j, 2] + (x - abscissae.result[j, 1]) * abscissae.result[j, 3] + norm.constant
-  return(dens.u)
-}
-
-
-#-----------------------------------------------------------------------------------------
-# Inverse sampling of upper enelope density
-#-----------------------------------------------------------------------------------------
-# Inverse cdf of S
-S_inv <- function(cdf, abscissae.result, z, norm.constant){
-  mass.grid <- rowSums(matrix(rep(c(-1, 1), length(abscissae.result[,3])) *
-                                rep(1/abscissae.result[,3], each = 2) * 
-                                exp(rep(abscissae.result[,2], each = 2) + 
-                                      rep(abscissae.result[,3], each = 2) * 
-                                      (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)) +norm.constant),
-                              byrow = TRUE, ncol = 2))
-  cum.mass <- cumsum(mass.grid)
-  j <- sapply(cdf, function(it) min(which(it <= cum.mass)))
-  
-  delta.mass <- matrix(nrow = length(j), ncol = 1)
-  x.hat <- matrix(nrow = length(j), ncol = 1)
-  
-  z.grid <- c(z, Inf)
-  
-  delta.mass[j==1] <- cdf[j==1]
-  x.hat[j==1] <- (log(abscissae.result[1,3] * delta.mass[j==1]) - abscissae.result[1,2] - norm.constant)/abscissae.result[1,3] + abscissae.result[1,1]
-  
-  j.nonzero <- j[j!=1]
-  delta.mass[j!=1] <- cdf[j!=1] - cum.mass[j.nonzero - 1]#[j.nonzero - 1]
-  partial.formula <- exp(abscissae.result[j.nonzero,2] + abscissae.result[j.nonzero,3] * (z.grid[j.nonzero - 1] - abscissae.result[j.nonzero,1]) + norm.constant) + delta.mass[j!=1] * abscissae.result[j.nonzero,3]
-  x.hat[j!=1] <- (log(partial.formula) - abscissae.result[j.nonzero,2] - norm.constant) / abscissae.result[j.nonzero,3] + abscissae.result[j.nonzero,1]
-  
-  j.last <- j[j==length(cum.mass)]
-  # x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (delta.mass[j==length(cum.mass)] - tail(mass.grid, 1))) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
-  x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (cdf[j==length(cum.mass)] - 1.0)*as.integer((cdf[j==length(cum.mass)] - 1.0) <= 0)) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
-  
-  return(x.hat)
-}
-
-
-# Inverse sampling function
-rs <- function(n.sim, S_inv, abscissae.result, z, norm.constant){
-  u.temp <- runif(n = n.sim)
-  x.temp <- S_inv(u.temp, abscissae.result, z, norm.constant)
-  return(x.temp)
-}
-
-#-----------------------------------------------------------------------------------------
-# rs(n.sim, S_inv, abscissae.result, z, norm.constant)
-x <- seq(-6, 6, by = 0.1)
-du.normalized(x, abscissae.result, z, norm.constant)
-
-haha2 <- function(x){ exp(du.unnormalized(x, abscissae.result, z))}
-curve(haha2, from = -3, to = 3)
-haha <- function(x){ exp(du.normalized(x, abscissae.result, z, norm.constant))}
-curve(haha, from = -3, to = 3)
-
-lines(density(rs(n, S_inv, abscissae.result, z, norm.constant)), lty = 2 , col = 'red')
-lines(density(rs(1e5, S_inv, abscissae.result, z, norm.constant)), lty = 2 , col = 'red')
-
-
-
-
-
-
-
-
-
-# Set up arguments:
-  n <- 1000
-
- 
-#---------------------------------------------
-
-#Example function for f
-h <- function(x){
-  return(log(dt(x, df = 10)))}
-n=10
-k=4
-
+# h <- function(x){
+#   return(log(dt(x, df = 10)))}
 #---------------------------------------------
 #This is the main engine.  It takes the log of a function (h), a required number of
 #values (n), and the number of points in the initial abscissae(k).  
-level3 <- function(h, n, k){
+ars243 <- function(h, n, k){
   #'finalValues' will be what we return.  We initiate it empty.
   finalValues <- c()
   abscissae.grid <- seq(-5, 5, length.out = k)
@@ -221,7 +105,6 @@ binary <- function(Tk, sampledPoint){
 }
 
 #-------------------------------------------------
-
 #This function runs the 'l' function.
 lowerbound <- function(x, coefficients, index){
   lvalue <- coefficients[index,1]*x + coefficients[index,2]
@@ -322,4 +205,7 @@ compute_norm_constant = function(){
   norm.constant <- -log(all.mass)
   return(norm.constant)
 }
+#-------------------------------------------------
+ars243(h, n, k)
+
 
