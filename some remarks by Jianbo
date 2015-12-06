@@ -6,7 +6,7 @@ install.packages(numDeriv)
  
 I also wrote two functions for the updating step, "update" and "update_coef". For the same reason, I update Tk and "coefficients" by just evaluating the function value and the gradient of the added point. 
 
-3. I package Wilson's codes of calculating norm constant and z into two functions. One problem I met is norm-constant is often inf, due to the fact the denominator is often zero in the calculation. I didn't solve that problem yet. 
+(SOLVED)3. I package Wilson's codes of calculating norm constant and z into two functions. One problem I met is norm-constant is often inf, due to the fact the denominator is often zero in the calculation. I didn't solve that problem yet. 
 
 
 

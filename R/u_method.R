@@ -1,29 +1,5 @@
-#### PUT ALL THE INPUT VARIABLES HERE ####
-
-# f <- dnorm()
-# h <- NULL
-
-# k <- 100
-# n <- 1000
-# domain <- c(-Inf, Inf)
 #-----------------------------------------------------------------------------------------
-# TEMPORARY INPUT VALUE
-h <- function(x){
-  return(log(dnorm(x)))
-}
-k <- 100
-n <- 1000
-#-----------------------------------------------------------------------------------------
-#### START OF FUNCTION ####
-if(is.null(h)){
-  h <- function(x){
-    return(log(f(x)))
-  }
-}
-#-----------------------------------------------------------------------------------------
-#
 # Fixed k points to create abscissae
-abscissae.grid <- seq(-5, 5, length.out = k)
 gen.abscissae <- function(abscissae.grid, h){
   library(numDeriv)
   h.x <- h(abscissae.grid)
@@ -31,23 +7,58 @@ gen.abscissae <- function(abscissae.grid, h){
   abscissae.result <- cbind(abscissae.grid, h.x, h.deriv)
   return(abscissae.result)
 }
-diff.h <- diff(abscissae.result[,2])
-xh.deriv <- abscissae.result[,1] * abscissae.result[,3]
-diff.xh.deriv <- diff(xh.deriv)
-diff.h.deriv <- diff(abscissae.result[,3])
-
-z <- (diff.h - diff.xh.deriv)/ (-diff.h.deriv)
 #-----------------------------------------------------------------------------------------
-# Integate over exponentiated upper envelope
-all.mass <- sum(
-  rep(c(-1, 1), length(abscissae.result[,3])) *
-    rep(1/abscissae.result[,3], each = 2) * 
-    exp(rep(abscissae.result[,2], each = 2) + 
-          rep(abscissae.result[,3], each = 2) * 
-          (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)))
-)
-# Normalize total density such that sum to 1
-norm.constant <- -log(all.mass)
+# # Integate over exponentiated upper envelope
+# all.mass <- sum(
+#   rep(c(-1, 1), length(abscissae.result[,3])) *
+#     rep(1/abscissae.result[,3], each = 2) * 
+#     exp(rep(abscissae.result[,2], each = 2) + 
+#           rep(abscissae.result[,3], each = 2) * 
+#           (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)))
+# )
+# # Normalize total density such that sum to 1
+# norm.constant <- -log(all.mass)
+
+# Compute the norm.constant.
+# compute_norm_constant = function(abscissae.result, z){
+#   all.mass <- sum(
+#     rep(c(-1, 1), length(abscissae.result[,3])) *
+#       rep(1/abscissae.result[,3], each = 2) * 
+#       exp(rep(abscissae.result[,2], each = 2) + 
+#             rep(abscissae.result[,3], each = 2) * 
+#             (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)))
+#   )
+#   # Normalize total density such that sum to 1
+#   norm.constant <- -log(all.mass)
+#   return(norm.constant)
+# }
+
+compute_norm_constant = function(abscissae.result, z){
+  intermediate <- rep(1/abscissae.result[,3], each = 2)
+  intermediate[is.infinite(intermediate)] <- 0
+  all.mass <- sum(
+    rep(c(-1, 1), length(abscissae.result[,3])) *
+      intermediate * 
+      exp(rep(abscissae.result[,2], each = 2) + 
+            rep(abscissae.result[,3], each = 2) * 
+            (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)))
+  ) +
+    diff(exp(rep(abscissae.result[,2], each = 2))[is.infinite(rep(1/abscissae.result[,3], each = 2))]
+         * rep(z, each = 2)[is.infinite(rep(1/abscissae.result[,3], each = 2))] * c(-1, 1)) # Part of mass when tangent is flat
+  # Normalize total density such that sum to 1
+  norm.constant <- -log(all.mass)
+  return(norm.constant)
+}
+
+# Compute z.
+compute_z = function(abscissae.result){
+  diff.h <- diff(abscissae.result[,2])
+  xh.deriv <- abscissae.result[,1] * abscissae.result[,3]
+  diff.xh.deriv <- diff(xh.deriv)
+  diff.h.deriv <- diff(abscissae.result[,3])
+  z <- (diff.h - diff.xh.deriv)/ (-diff.h.deriv)
+  return(z)
+}
 
 # UN-normaized version of upper envelope (not exponentiated)
 du.unnormalized <- function(x, abscissae.result, z){
@@ -56,7 +67,7 @@ du.unnormalized <- function(x, abscissae.result, z){
   return(dens.u)
 }
 
-# Normaized version of upper envelope (not exponentiated).
+# Normaized version of upper envelope (not exponentiated)
 du.normalized <- function(x, abscissae.result, z, norm.constant){
   j <- sapply(x, function(it) min(which(it <= c(z, Inf))))
   dens.u <- abscissae.result[j, 2] + (x - abscissae.result[j, 1]) * abscissae.result[j, 3] + norm.constant
@@ -106,101 +117,8 @@ rs <- function(n.sim, S_inv, abscissae.result, z, norm.constant){
   return(x.temp)
 }
 
-#-----------------------------------------------------------------------------------------
-# rs(n.sim, S_inv, abscissae.result, z, norm.constant)
-x <- seq(-6, 6, by = 0.1)
-du.normalized(x, abscissae.result, z, norm.constant)
 
-haha2 <- function(x){ exp(du.unnormalized(x, abscissae.result, z))}
-curve(haha2, from = -3, to = 3)
-haha <- function(x){ exp(du.normalized(x, abscissae.result, z, norm.constant))}
-curve(haha, from = -3, to = 3)
-
-lines(density(rs(n, S_inv, abscissae.result, z, norm.constant)), lty = 2 , col = 'red')
-lines(density(rs(1e5, S_inv, abscissae.result, z, norm.constant)), lty = 2 , col = 'red')
-
-
-
-
-
-
-
-
-
-# Set up arguments:
-  n <- 1000
-
- 
-#---------------------------------------------
-
-#Example function for f
-h <- function(x){
-  return(log(dbeta(x, 3, 1)))}
-n=10
-k=4
-
-#---------------------------------------------
-#This is the main engine.  It takes the log of a function (h), a required number of
-#values (n), and the number of points in the initial abscissae(k).  
-level3 <- function(h, n, k){
-  #'finalValues' will be what we return.  We initiate it empty.
-  finalValues <- c()
-  abscissae.grid <- seq(-5, 5, length.out = k)
-  abscissae.result <- gen.abscissae(abscissae.grid, h)
-  Tk = abscissae.result[,1]
-  h_Tk = abscissae.result[,2]
-  #'Coefficients' are the slope and y intercept associated with each chord in the 'l'
-  #function  They are in a matrix that gets created by 'lupdater'.
-  coefficients <- lupdater(Tk,h_Tk)
-  # Run the code until we hit the desired length
-  while(length(finalValues) < n){
-    #Take a random point from the 'sk' function, known as 'rs'.
-    z = compute_z()
-    norm.constant = compute_norm_constant()
-    sampler <- (rs(1, S_inv, abscissae.result, z, norm.constant))[1,1]
-    #If that point lies outside the bounds set by my Tk values
-    if(sampler < Tk[1] | sampler > Tk[length(Tk)]){
-      # In this case, we need to evalue h,h'
-      hValue <- h(sampler)
-      h.deriv <- grad(func = h, x = sampler)
-      
-      # Update abscissae.result and coefficients.
-      abscissae.result = update(abscissae.result,sampler,hValue,h.deriv)
-      coefficients = update_coeff(coefficients,sampler,abscissae.result)
-    }else{ 
-      #First we run a binary search to find which chord the point finds itself within.
-      index <- binary(Tk, sampler)
-      
-      #The value of the lower bound is calculated from this chord, found with binary.
-      lval <- lowerbound(sampler,coefficients,index)
-      
-      #The value of the upper bound is calculated by Wilson.
-      uval <- du.unnormalized(sampler, abscissae.result, z)
-      
-      #We also grab a number from the uniform distribution.
-      uniform <- runif(1)  
-      
-      #The big IF statements, this one's the 'squeezing' step
-      if(uniform <= exp(lval - uval)){
-        finalValues <- c(finalValues, sampler)
-        
-      }else{
-        # Only evaluate the log of the function if we fail to squeeze.  Rejection step.
-        hValue <- h(sampler)
-        h.deriv <- grad(func = h, x = sampler)
-        if(uniform <= exp(hValue - uval)){
-          finalValues <- c(finalValues, sampler)
-          abscissae.result = update(original_abs,sampler,hValue,h.deriv)
-          coefficients = update_coeff(coefficients,sampler,abscissae.result)
-        }
-      }
-    }
-  }
-  #I was printing the length of Tk to see how many points I updated with (typically 
-  #it ends up being 15-30).
-  print(length(Tk))
-  return(finalValues)
-}
+#-------------------------------------------------------------------------------------------
 
 #----------------------------------------------
 #This function runs a binary search to find the chord we should use
@@ -221,7 +139,6 @@ binary <- function(Tk, sampledPoint){
 }
 
 #-------------------------------------------------
-
 #This function runs the 'l' function.
 lowerbound <- function(x, coefficients, index){
   lvalue <- coefficients[index,1]*x + coefficients[index,2]
@@ -268,8 +185,8 @@ update_coeff <- function(coefficients,x_star,updated_abscissae.result){
     coefficients[i_added-1,1] <- (h_Tk[i_added-1]-h_Tk[i_added]) / (Tk[i_added-1]-Tk[i_added])   
     coefficients[i_added-1,2] <- h_Tk[i_added-1] - coefficients[i_added-1,1] * Tk[i_added-1]
     new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
-    new_row = c(new_x,h_star-new_x*x_star)
-    updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row,
+    new_column = c(new_x,h_star-new_x*x_star)
+    updated_coefficients = rbind(coefficients[1:(i_added-1),],new_column,
                                  coefficients[i_added:length(coefficients[,1]),])
     
   }
@@ -286,42 +203,3 @@ update_coeff <- function(coefficients,x_star,updated_abscissae.result){
   
   return(updated_coefficients)
 }
-
-
-
-# Test the update_coeffi function.
-k=4
-finalValues <- c()
-abscissae.grid <- seq(-5, 5, length.out = k)
-abscissae.result <- gen.abscissae(abscissae.grid, h)
-Tk = abscissae.result[,1]
-h_Tk = abscissae.result[,2]
-#'Coefficients' are the slope and y intercept associated with each chord in the 'l'
-#function  They are in a matrix that gets created by 'lupdater'.
-coefficients <- lupdater(Tk,h_Tk)
-abscissae.result = update(original_abs,sampler,hValue,h.deriv)
-coefficients = update_coeff(coefficients,x_star=sampler,updated_abscissae.result=abscissae.result)
-# This function packs Wilson's code to compute z.
-compute_z = function(){
-  diff.h <- diff(abscissae.result[,2])
-  xh.deriv <- abscissae.result[,1] * abscissae.result[,3]
-  diff.xh.deriv <- diff(xh.deriv)
-  diff.h.deriv <- diff(abscissae.result[,3])
-  z <- (diff.h - diff.xh.deriv)/ (-diff.h.deriv)
-  return(z)
-}
-
-# This function uses Wilson's code to compute the norm.constant.
-compute_norm_constant = function(){
-  all.mass <- sum(
-    rep(c(-1, 1), length(abscissae.result[,3])) *
-      rep(1/abscissae.result[,3], each = 2) * 
-      exp(rep(abscissae.result[,2], each = 2) + 
-            rep(abscissae.result[,3], each = 2) * 
-            (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)))
-  )
-  # Normalize total density such that sum to 1
-  norm.constant <- -log(all.mass)
-  return(norm.constant)
-}
-
