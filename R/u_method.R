@@ -27,19 +27,25 @@ gen.abscissae <- function(abscissae.grid, h){
 compute_norm_constant = function(abscissae.result, z){
   intermediate <- rep(1/abscissae.result[,3], each = 2)
   intermediate[is.infinite(intermediate)] <- 0
+  
+  flat.part <- diff(exp(rep(abscissae.result[,2], each = 2))[is.infinite(rep(1/abscissae.result[,3], each = 2))]
+       * rep(z, each = 2)[is.infinite(rep(1/abscissae.result[,3], each = 2))] * c(-1, 1)) # Part of mass when tangent is flat
+  if(length(flat.part) == 0){flat.part <- 0}
+  
   all.mass <- sum(
     rep(c(-1, 1), length(abscissae.result[,3])) *
       intermediate * 
       exp(rep(abscissae.result[,2], each = 2) + 
             rep(abscissae.result[,3], each = 2) * 
             (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)))
-  ) +
-    diff(exp(rep(abscissae.result[,2], each = 2))[is.infinite(rep(1/abscissae.result[,3], each = 2))]
-         * rep(z, each = 2)[is.infinite(rep(1/abscissae.result[,3], each = 2))] * c(-1, 1)) # Part of mass when tangent is flat
+  ) + flat.part
+    
   # Normalize total density such that sum to 1
   norm.constant <- -log(all.mass)
   return(norm.constant)
 }
+
+
 
 # Compute z.
 compute_z = function(abscissae.result){
@@ -176,8 +182,8 @@ update_coeff <- function(coefficients,x_star,updated_abscissae.result){
     coefficients[i_added-1,1] <- (h_Tk[i_added-1]-h_Tk[i_added]) / (Tk[i_added-1]-Tk[i_added])   
     coefficients[i_added-1,2] <- h_Tk[i_added-1] - coefficients[i_added-1,1] * Tk[i_added-1]
     new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
-    new_column = c(new_x,h_star-new_x*x_star)
-    updated_coefficients = rbind(coefficients[1:(i_added-1),],new_column,
+    new_row = c(new_x,h_star-new_x*x_star)
+    updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row,
                                  coefficients[i_added:length(coefficients[,1]),])
     
   }
