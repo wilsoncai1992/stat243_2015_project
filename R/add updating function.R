@@ -135,7 +135,7 @@ lines(density(rs(1e5, S_inv, abscissae.result, z, norm.constant)), lty = 2 , col
 
 #Example function for f
 h <- function(x){
-  return(log(dt(x, df = 10)))}
+  return(log(dbeta(x, 3, 1)))}
 n=10
 k=4
 
@@ -165,7 +165,7 @@ level3 <- function(h, n, k){
       h.deriv <- grad(func = h, x = sampler)
       
       # Update abscissae.result and coefficients.
-      abscissae.result = update(original_abs,sampler,hValue,h.deriv)
+      abscissae.result = update(abscissae.result,sampler,hValue,h.deriv)
       coefficients = update_coeff(coefficients,sampler,abscissae.result)
     }else{ 
       #First we run a binary search to find which chord the point finds itself within.
@@ -268,9 +268,9 @@ update_coeff <- function(coefficients,x_star,updated_abscissae.result){
     coefficients[i_added-1,1] <- (h_Tk[i_added-1]-h_Tk[i_added]) / (Tk[i_added-1]-Tk[i_added])   
     coefficients[i_added-1,2] <- h_Tk[i_added-1] - coefficients[i_added-1,1] * Tk[i_added-1]
     new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
-    new_column = c(new_x,h_star-new_x*x_star)
-    updated_coefficients = rbind(coefficients[1:(i_added-1),],new_column,
-                                 coefficients[i_added:length(coefficients[1,]),])
+    new_row = c(new_x,h_star-new_x*x_star)
+    updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row,
+                                 coefficients[i_added:length(coefficients[,1]),])
     
   }
   
@@ -286,6 +286,8 @@ update_coeff <- function(coefficients,x_star,updated_abscissae.result){
   
   return(updated_coefficients)
 }
+
+
 
 # Test the update_coeffi function.
 k=4
