@@ -22,8 +22,6 @@ if(is.null(h)){
   }
 }
 
-# h <- function(x){
-#   return(log(dt(x, df = 10)))}
 #---------------------------------------------
 #This is the main engine.  It takes the log of a function (h), a required number of
 #values (n), and the number of points in the initial abscissae(k).  
@@ -41,8 +39,8 @@ ars243 <- function(h, n, k){
   while(length(finalValues) < n){
     #Take a random point from the 'sk' function, known as 'rs'.
     z = compute_z(abscissae.result)
-    norm.constant = compute_norm_constant(abscissae.result, z)
-    sampler <- rs(1, S_inv, abscissae.result, z, norm.constant)[1,1]
+    norm.constant = compute_norm_constant(abscissae.result,z)
+    sampler <- (rs(1, S_inv, abscissae.result, z, norm.constant))[1,1]
     #If that point lies outside the bounds set by my Tk values
     if(sampler < Tk[1] | sampler > Tk[length(Tk)]){
       # In this case, we need to evalue h,h'
@@ -83,28 +81,9 @@ ars243 <- function(h, n, k){
   }
   #I was printing the length of Tk to see how many points I updated with (typically 
   #it ends up being 15-30).
-  print(length(Tk))
+  print(length(coefficients[,1]))
   return(finalValues)
 }
 
-
-
-
-
-
 #-------------------------------------------------
-ars243(h, n, k)
-
-# Test the update_coeffi function.
-k=4
-finalValues <- c()
-abscissae.grid <- seq(-5, 5, length.out = k)
-abscissae.result <- gen.abscissae(abscissae.grid, h)
-Tk = abscissae.result[,1]
-h_Tk = abscissae.result[,2]
-#'Coefficients' are the slope and y intercept associated with each chord in the 'l'
-#function  They are in a matrix that gets created by 'lupdater'.
-coefficients <- lupdater(Tk,h_Tk)
-abscissae.result = update(original_abs,sampler,hValue,h.deriv)
-coefficients = update_coeff(coefficients,x_star=sampler,updated_abscissae.result=abscissae.result)
-
+ars243(h, n = 1e3, k)

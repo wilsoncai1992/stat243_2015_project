@@ -24,28 +24,18 @@ gen.abscissae <- function(abscissae.grid, h){
 #   return(norm.constant)
 # }
 
-compute_norm_constant = function(abscissae.result, z){
-  intermediate <- rep(1/abscissae.result[,3], each = 2)
-  intermediate[is.infinite(intermediate)] <- 0
-  
-  flat.part <- diff(exp(rep(abscissae.result[,2], each = 2))[is.infinite(rep(1/abscissae.result[,3], each = 2))]
-       * rep(z, each = 2)[is.infinite(rep(1/abscissae.result[,3], each = 2))] * c(-1, 1)) # Part of mass when tangent is flat
-  if(length(flat.part) == 0){flat.part <- 0}
-  
+compute_norm_constant = function(abscissae.result,z){
   all.mass <- sum(
     rep(c(-1, 1), length(abscissae.result[,3])) *
-      intermediate * 
+      rep(1/abscissae.result[,3], each = 2) * 
       exp(rep(abscissae.result[,2], each = 2) + 
             rep(abscissae.result[,3], each = 2) * 
             (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)))
-  ) + flat.part
-    
+  )
   # Normalize total density such that sum to 1
   norm.constant <- -log(all.mass)
   return(norm.constant)
 }
-
-
 
 # Compute z.
 compute_z = function(abscissae.result){
@@ -57,6 +47,9 @@ compute_z = function(abscissae.result){
   return(z)
 }
 
+
+
+
 # UN-normaized version of upper envelope (not exponentiated)
 du.unnormalized <- function(x, abscissae.result, z){
   j <- sapply(x, function(it) min(which(it <= c(z, Inf))))
@@ -64,7 +57,7 @@ du.unnormalized <- function(x, abscissae.result, z){
   return(dens.u)
 }
 
-# Normaized version of upper envelope (not exponentiated)
+# Normaized version of upper envelope (not exponentiated).
 du.normalized <- function(x, abscissae.result, z, norm.constant){
   j <- sapply(x, function(it) min(which(it <= c(z, Inf))))
   dens.u <- abscissae.result[j, 2] + (x - abscissae.result[j, 1]) * abscissae.result[j, 3] + norm.constant
@@ -134,7 +127,6 @@ binary <- function(Tk, sampledPoint){
   index <- floor(((top+bot)/2))
   return(index)
 }
-
 #-------------------------------------------------
 #This function runs the 'l' function.
 lowerbound <- function(x, coefficients, index){
@@ -154,6 +146,7 @@ lupdater <- function(Tk,h_Tk){
   return(coefficients)
 }
 
+
 # This function performs the updating step.
 # The inputs are original_abs, which is a matrix of dimension k times 3, storing x,h,h'..
 # and the original coefficients matrix.
@@ -168,6 +161,7 @@ update <- function(original_abs,x_star,h_star,h_deri_star){
   updated_abs = updated_abs[order(updated_abs[,1]),]
   return(updated_abs)
 }
+
 
 # This function updates the coefficient matrix.
 update_coeff <- function(coefficients,x_star,updated_abscissae.result){
@@ -192,7 +186,8 @@ update_coeff <- function(coefficients,x_star,updated_abscissae.result){
     new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
     new_column = c(new_x,h_star-new_x*x_star)
     updated_coefficients = rbind(new_column, coefficients)
-  }else{
+  }
+  if(i_added == length(Tk)){
     new_x = (h_star-h_Tk[length(h_Tk)-1]) / (x_star-Tk[length(Tk)-1])   
     new_column = c(new_x,h_star-new_x*x_star)
     updated_coefficients = rbind(coefficients,new_column)
