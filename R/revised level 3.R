@@ -155,8 +155,8 @@ level3 <- function(h, n, k){
   # Run the code until we hit the desired length
   while(length(finalValues) < n){
     #Take a random point from the 'sk' function, known as 'rs'.
-    z = compute_z()
-    norm.constant = compute_norm_constant(z)
+    z = compute_z(abscissae.result)
+    norm.constant = compute_norm_constant(abscissae.result, z)
     sampler <- (rs(1, S_inv, abscissae.result, z, norm.constant))[1,1]
     #If that point lies outside the bounds set by my Tk values
     if(sampler < Tk[1] | sampler > Tk[length(Tk)]){
@@ -302,7 +302,7 @@ coefficients <- lupdater(Tk,h_Tk)
 abscissae.result = update(original_abs,sampler,hValue,h.deriv)
 coefficients = update_coeff(coefficients,x_star=sampler,updated_abscissae.result=abscissae.result)
 # This function packs Wilson's code to compute z.
-compute_z = function(){
+compute_z = function(abscissae.result){
   diff.h <- diff(abscissae.result[,2])
   xh.deriv <- abscissae.result[,1] * abscissae.result[,3]
   diff.xh.deriv <- diff(xh.deriv)
@@ -312,7 +312,7 @@ compute_z = function(){
 }
 
 # This function uses Wilson's code to compute the norm.constant.
-compute_norm_constant = function(z){
+compute_norm_constant = function(abscissae.result, z){
   all.mass <- sum(
     rep(c(-1, 1), length(abscissae.result[,3])) *
       rep(1/abscissae.result[,3], each = 2) * 
