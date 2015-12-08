@@ -8,8 +8,11 @@
 # domain <- c(-Inf, Inf)
 #-----------------------------------------------------------------------------------------
 # TEMPORARY INPUT VALUE
+# h <- function(x){
+#   return(log(dnorm(x)))
+# }
 h <- function(x){
-  return(log(dnorm(x)))
+  return(log(dbeta(x, 3, 2)))
 }
 k <- 4
 n <- 1000
@@ -37,18 +40,33 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
     }
   }
   
-  
+  lb <- domain[1]
+  ub <- domain[2]
   #-----------------------------------------------------------------------------------------
   # Main body
   #-----------------------------------------------------------------------------------------
   #'finalValues' will be what we return.  We initiate it empty.
   finalValues <- c()
-  abscissae.grid <- seq(-5, 5, length.out = k)
+  if (all.equal(domain, c(-Inf, Inf)) == TRUE){
+    abscissae.grid <- seq(-5, 5, length.out = k)
+  }else{
+    abscissae.grid <- seq(lb, ub, length.out = k)
+    abscissae.grid <- abscissae.grid[abscissae.grid > lb & abscissae.grid < ub]
+  }
+  
   abscissae.result <- gen.abscissae(abscissae.grid, h)
   
   ############# Renee's function of check.log.concave #############
   if(check.log.concave(abscissae.result) == FALSE){
-    stop("f is not log-concave!")
+    # expand the grid
+    abscissae.grid <- seq(lb, ub, length.out = 10 * k)
+    abscissae.grid <- abscissae.grid[abscissae.grid > lb & abscissae.grid < ub]
+    abscissae.result <- gen.abscissae(abscissae.grid, h)
+    
+    if(check.log.concave(abscissae.result) == FALSE){
+      # If still not log concave
+      stop("f is not log-concave! Or k is too small.")
+    }
   }
   #################################################################
   

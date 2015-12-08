@@ -2,6 +2,7 @@
 # Fixed k points to create abscissae
 gen.abscissae <- function(abscissae.grid, h){
   library(numDeriv)
+  
   h.x <- h(abscissae.grid)
   h.deriv <- grad(func = h, x = abscissae.grid)
   abscissae.result <- cbind(abscissae.grid, h.x, h.deriv)
