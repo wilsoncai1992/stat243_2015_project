@@ -137,7 +137,7 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
   }
   #I was printing the length of Tk to see how many points I updated with (typically 
   #it ends up being 15-30).
-  print(length(coefficients[,1]))
+  print(paste('Total number of abscissae grid point:', length(coefficients[,1])) )
   return(finalValues)
 }
 
@@ -145,4 +145,5 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
 # ars243(n = 1e3, h = h, k = 4, domain = c(0,1))
 
 curve(dbeta(x, 3, 2), from = 0, to = 1)
-lines(density(ars243(n = 1e4, h = h, k = 10, domain = c(0,1))), lty=2, col='blue')
+lines(density(ars243(n = 1e4, h = h, k = 3, domain = c(0,1))), lty=2, col='blue')
+lines(density(ars243(n = 1e4, h = h, k = 300, domain = c(0,1))), lty=2, col='blue')

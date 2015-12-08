@@ -1,6 +1,8 @@
 ############# Renee's function of check.log.concave #############
 check.log.concave <- function(abscissae.result){
-  return(TRUE)
+  deriv.seq <- abscissae.result[,3]
+  is.concave <- (deriv.seq[1] > 0) & (tail(deriv.seq, 1) < 0)
+  return(is.concave)
 }
 #################################################################
 #-----------------------------------------------------------------------------------------
