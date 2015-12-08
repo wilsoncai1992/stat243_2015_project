@@ -1,3 +1,8 @@
+############# Renee's function of check.log.concave #############
+check.log.concave <- function(abscissae.result){
+  return(TRUE)
+}
+#################################################################
 #-----------------------------------------------------------------------------------------
 # Fixed k points to create abscissae
 gen.abscissae <- function(abscissae.grid, h){
@@ -52,15 +57,15 @@ compute_z = function(abscissae.result){
 
 
 # UN-normaized version of upper envelope (not exponentiated)
-du.unnormalized <- function(x, abscissae.result, z){
-  j <- sapply(x, function(it) min(which(it <= c(z, Inf))))
+du.unnormalized <- function(x, abscissae.result, z, lb, ub){
+  j <- sapply(x, function(it) min(which(it <= c(z, ub))))
   dens.u <- abscissae.result[j, 2] + (x - abscissae.result[j, 1]) * abscissae.result[j, 3]
   return(dens.u)
 }
 
 # Normaized version of upper envelope (not exponentiated).
-du.normalized <- function(x, abscissae.result, z, norm.constant){
-  j <- sapply(x, function(it) min(which(it <= c(z, Inf))))
+du.normalized <- function(x, abscissae.result, z, norm.constant, lb, ub){
+  j <- sapply(x, function(it) min(which(it <= c(z, ub))))
   dens.u <- abscissae.result[j, 2] + (x - abscissae.result[j, 1]) * abscissae.result[j, 3] + norm.constant
   return(dens.u)
 }
@@ -70,23 +75,25 @@ du.normalized <- function(x, abscissae.result, z, norm.constant){
 # Inverse sampling of upper enelope density
 #-----------------------------------------------------------------------------------------
 # Inverse cdf of S
-S_inv <- function(cdf, abscissae.result, z, norm.constant){
-  mass.grid <- rowSums(matrix(rep(c(-1, 1), length(abscissae.result[,3])) *
-                                rep(1/abscissae.result[,3], each = 2) * 
-                                exp(rep(abscissae.result[,2], each = 2) + 
-                                      rep(abscissae.result[,3], each = 2) * 
-                                      (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)) +norm.constant),
-                              byrow = TRUE, ncol = 2))
+S_inv <- function(cdf, abscissae.result, z, norm.constant, lb, ub){
+  cdf.z <- matrix(rep(c(-1, 1), length(abscissae.result[,3])) *
+                    rep(1/abscissae.result[,3], each = 2) * 
+                    exp(rep(abscissae.result[,2], each = 2) + 
+                          rep(abscissae.result[,3], each = 2) * 
+                          (c(lb, rep(z, each = 2), ub) - rep(abscissae.result[,1], each = 2)) +norm.constant),
+                  byrow = TRUE, ncol = 2)
+  mass.grid <- rowSums(cdf.z)
   cum.mass <- cumsum(mass.grid)
   j <- sapply(cdf, function(it) min(which(it <= cum.mass)))
   
   delta.mass <- matrix(nrow = length(j), ncol = 1)
   x.hat <- matrix(nrow = length(j), ncol = 1)
   
-  z.grid <- c(z, Inf)
+  z.grid <- c(z, ub)
   
   delta.mass[j==1] <- cdf[j==1]
-  x.hat[j==1] <- (log(abscissae.result[1,3] * delta.mass[j==1]) - abscissae.result[1,2] - norm.constant)/abscissae.result[1,3] + abscissae.result[1,1]
+  x.hat[j==1] <- (log(abscissae.result[1,3] * (delta.mass[j==1] - cdf.z[1,1])) - abscissae.result[1,2] - norm.constant)/abscissae.result[1,3] + abscissae.result[1,1]
+  x.hat[j==1][x.hat[j==1] < lb] <- lb
   
   j.nonzero <- j[j!=1]
   delta.mass[j!=1] <- cdf[j!=1] - cum.mass[j.nonzero - 1]#[j.nonzero - 1]
@@ -95,16 +102,16 @@ S_inv <- function(cdf, abscissae.result, z, norm.constant){
   
   j.last <- j[j==length(cum.mass)]
   # x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (delta.mass[j==length(cum.mass)] - tail(mass.grid, 1))) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
-  x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (cdf[j==length(cum.mass)] - 1.0)*as.integer((cdf[j==length(cum.mass)] - 1.0) <= 0)) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
+  x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (cdf[j==length(cum.mass)] - 1.0 + tail(as.vector(cdf.z),1))*as.integer((cdf[j==length(cum.mass)] - 1.0) <= 0)) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
   
   return(x.hat)
 }
 
 
 # Inverse sampling function
-rs <- function(n.sim, S_inv, abscissae.result, z, norm.constant){
+rs <- function(n.sim, S_inv, abscissae.result, z, norm.constant, lb, ub){
   u.temp <- runif(n = n.sim)
-  x.temp <- S_inv(u.temp, abscissae.result, z, norm.constant)
+  x.temp <- S_inv(u.temp, abscissae.result, z, norm.constant, lb, ub)
   return(x.temp)
 }
 
@@ -174,12 +181,25 @@ update_coeff <- function(coefficients,x_star,updated_abscissae.result){
   
   # Update the coefficient matrix.
   if(i_added<length(Tk) && i_added>1){
-    coefficients[i_added-1,1] <- (h_Tk[i_added-1]-h_Tk[i_added]) / (Tk[i_added-1]-Tk[i_added])   
-    coefficients[i_added-1,2] <- h_Tk[i_added-1] - coefficients[i_added-1,1] * Tk[i_added-1]
+#     coefficients[i_added-1,1] <- (h_Tk[i_added-1]-h_Tk[i_added]) / (Tk[i_added-1]-Tk[i_added])   
+#     coefficients[i_added-1,2] <- h_Tk[i_added-1] - coefficients[i_added-1,1] * Tk[i_added-1]
+#     new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
+#     new_row = c(new_x,h_star-new_x*x_star)
+    # updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row,
+                                 # coefficients[i_added:length(coefficients[,1]),])
     new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
     new_row = c(new_x,h_star-new_x*x_star)
-    updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row,
-                                 coefficients[i_added:length(coefficients[,1]),])
+    if(i_added<=length(coefficients[,1])){
+      updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row,
+                                   coefficients[i_added:length(coefficients[,1]),])
+    }else{
+      updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row)
+    }
+    updated_coefficients[i_added-1,1] <- (h_Tk[i_added-1]-h_Tk[i_added]) / (Tk[i_added-1]-Tk[i_added])   
+    updated_coefficients[i_added-1,2] <- h_Tk[i_added-1] - updated_coefficients[i_added-1,1] * Tk[i_added-1]
+    
+#     updated_coefficients = rbind(coefficients[1:(i_added-2),],new_row,
+#                                  coefficients[(i_added-1):length(coefficients[,1]),])
     
   }
   

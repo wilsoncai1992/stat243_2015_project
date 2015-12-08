@@ -24,17 +24,21 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
   #-----------------------------------------------------------------------------------------
   # Checking input validity
   #-----------------------------------------------------------------------------------------
-  if ( is.expression(f) ) {
-    f_exp <- f
-    f <- function(x) { eval(f_exp) }
-  }
-  if (!is.function(f)) {
-    stop( '"f" has to be either expr or function' )
-  }
-  if(is.null(h)){
-    if(is.null(f)){
-      stop('"f" and "h" are both missing. No default value.')
+  if(is.null(f) & is.null(h)){
+    stop('"f" and "h" are both missing. No default value.')
+  }else{
+    if(!is.null(f)){
+      if ( is.expression(f) ) {
+        f_exp <- f
+        f <- function(x) { eval(f_exp) }
+      }
+      if (!is.function(f)) {
+        stop( '"f" has to be either expr or function' )
+      }
     }
+  }
+  
+  if(is.null(h)){
     h <- function(x){
       return(log(f(x)))
     }
@@ -59,7 +63,7 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
   ############# Renee's function of check.log.concave #############
   if(check.log.concave(abscissae.result) == FALSE){
     # expand the grid
-    abscissae.grid <- seq(lb, ub, length.out = 10 * k)
+    abscissae.grid <- seq(lb, ub, length.out = 2 * k)
     abscissae.grid <- abscissae.grid[abscissae.grid > lb & abscissae.grid < ub]
     abscissae.result <- gen.abscissae(abscissae.grid, h)
     
@@ -80,7 +84,7 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
     #Take a random point from the 'sk' function, known as 'rs'.
     z = compute_z(abscissae.result)
     norm.constant = compute_norm_constant(abscissae.result,z, lb, ub)
-    sampler <- (rs(1, S_inv, abscissae.result, z, norm.constant))[1,1]
+    sampler <- rs(1, S_inv, abscissae.result, z, norm.constant, lb, ub)[1,1]
     #If that point lies outside the bounds set by my Tk values
     if(sampler < Tk[1] | sampler > Tk[length(Tk)]){
       # In this case, we need to evalue h,h'
@@ -105,7 +109,7 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
       lval <- lowerbound(sampler,coefficients,index)
       
       #The value of the upper bound is calculated by Wilson.
-      uval <- du.unnormalized(sampler, abscissae.result, z)
+      uval <- du.unnormalized(sampler, abscissae.result, z, lb, ub)
       
       #We also grab a number from the uniform distribution.
       uniform <- runif(1)  
@@ -138,4 +142,7 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
 }
 
 #-------------------------------------------------
-ars243(n = 1e3, h, k)
+# ars243(n = 1e3, h = h, k = 4, domain = c(0,1))
+
+curve(dbeta(x, 3, 2), from = 0, to = 1)
+lines(density(ars243(n = 1e4, h = h, k = 10, domain = c(0,1))), lty=2, col='blue')
