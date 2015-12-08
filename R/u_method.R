@@ -149,9 +149,9 @@ lowerbound <- function(x, coefficients, index){
 # represented as two vectors. 
 lupdater <- function(Tk,h_Tk){
   k=length(Tk)
-  coefficients1 <- matrix(c((h_Tk[1:(k-1)]-h_Tk[2:k])/(Tk[1:(k-1)]-Tk[2:k])), k-1, 2, byrow = FALSE)
-  coefficients1[,2] = h_Tk[1:(k-1)] - coefficients1[,1]*Tk[1:(k-1)]
-  return(coefficients-coefficients1)
+  coefficients <- matrix(c((h_Tk[1:(k-1)]-h_Tk[2:k])/(Tk[1:(k-1)]-Tk[2:k])), k-1, 2, byrow = FALSE)
+  coefficients[,2] = h_Tk[1:(k-1)] - coefficients[,1]*Tk[1:(k-1)]
+  return(coefficients)
 }
 
 
