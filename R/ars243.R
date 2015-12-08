@@ -29,6 +29,9 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
     stop( '"f" has to be either expr or function' )
   }
   if(is.null(h)){
+    if(is.null(f)){
+      stop('"f" and "h" are both missing. No default value.')
+    }
     h <- function(x){
       return(log(f(x)))
     }
@@ -42,6 +45,13 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
   finalValues <- c()
   abscissae.grid <- seq(-5, 5, length.out = k)
   abscissae.result <- gen.abscissae(abscissae.grid, h)
+  
+  ############# Renee's function of check.log.concave #############
+  if(check.log.concave(abscissae.result) == FALSE){
+    stop("f is not log-concave!")
+  }
+  #################################################################
+  
   Tk = abscissae.result[,1]
   h_Tk = abscissae.result[,2]
   #'Coefficients' are the slope and y intercept associated with each chord in the 'l'
@@ -62,6 +72,13 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
       # Update abscissae.result and coefficients.
       abscissae.result = update(abscissae.result,sampler,hValue,h.deriv)
       coefficients = update_coeff(coefficients,sampler,abscissae.result)
+      
+      ############# Renee's function of check.log.concave #############
+      if(check.log.concave(abscissae.result) == FALSE){
+        stop("f is not log-concave!")
+      }
+      #################################################################
+      
     }else{ 
       #First we run a binary search to find which chord the point finds itself within.
       index <- binary(Tk, sampler)
@@ -87,6 +104,11 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
           finalValues <- c(finalValues, sampler)
           abscissae.result = update(abscissae.result,sampler,hValue,h.deriv)
           coefficients = update_coeff(coefficients,sampler,abscissae.result)
+          ############# Renee's function of check.log.concave #############
+          if(check.log.concave(abscissae.result) == FALSE){
+            stop("f is not log-concave!")
+          }
+          #################################################################
         }
       }
     }
