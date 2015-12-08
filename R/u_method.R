@@ -148,12 +148,10 @@ lowerbound <- function(x, coefficients, index){
 # The inputs are (sorted) Tk and the values of h at points of Tk respectively, 
 # represented as two vectors. 
 lupdater <- function(Tk,h_Tk){
-  coefficients <- matrix(0, nrow = (length(Tk)-1), ncol = 2)
-  for(j in 1:(length(Tk)-1)){
-    coefficients[j,1] <- (h_Tk[j]-h_Tk[j+1])/(Tk[j]-Tk[j+1])   
-    coefficients[j,2] <- h_Tk[j] - coefficients[j,1]*Tk[j]
-  }
-  return(coefficients)
+  k=length(Tk)
+  coefficients1 <- matrix(c((h_Tk[1:(k-1)]-h_Tk[2:k])/(Tk[1:(k-1)]-Tk[2:k])), k-1, 2, byrow = FALSE)
+  coefficients1[,2] = h_Tk[1:(k-1)] - coefficients1[,1]*Tk[1:(k-1)]
+  return(coefficients-coefficients1)
 }
 
 
