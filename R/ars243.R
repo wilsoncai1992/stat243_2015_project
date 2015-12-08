@@ -1,6 +1,6 @@
 #### PUT ALL THE INPUT VARIABLES HERE ####
 
-# f <- dnorm()
+# f <- function(x) dnorm(x)
 # h <- NULL
 
 # k <- 100
@@ -13,19 +13,31 @@ h <- function(x){
 }
 k <- 4
 n <- 1000
-#-----------------------------------------------------------------------------------------
-#### START OF FUNCTION ####
-source('./u_method.R')
-if(is.null(h)){
-  h <- function(x){
-    return(log(f(x)))
-  }
-}
-
 #---------------------------------------------
 #This is the main engine.  It takes the log of a function (h), a required number of
 #values (n), and the number of points in the initial abscissae(k).  
-ars243 <- function(h, n, k){
+ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
+  source('./u_method.R')
+  #-----------------------------------------------------------------------------------------
+  # Checking input validity
+  #-----------------------------------------------------------------------------------------
+  if ( is.expression(f) ) {
+    f_exp <- f
+    f <- function(x) { eval(f_exp) }
+  }
+  if (!is.function(f)) {
+    stop( '"f" has to be either expr or function' )
+  }
+  if(is.null(h)){
+    h <- function(x){
+      return(log(f(x)))
+    }
+  }
+  
+  
+  #-----------------------------------------------------------------------------------------
+  # Main body
+  #-----------------------------------------------------------------------------------------
   #'finalValues' will be what we return.  We initiate it empty.
   finalValues <- c()
   abscissae.grid <- seq(-5, 5, length.out = k)
@@ -86,4 +98,4 @@ ars243 <- function(h, n, k){
 }
 
 #-------------------------------------------------
-ars243(h, n = 1e3, k)
+ars243(n = 1e3, h, k)
