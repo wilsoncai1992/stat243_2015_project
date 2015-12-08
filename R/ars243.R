@@ -79,7 +79,7 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
   while(length(finalValues) < n){
     #Take a random point from the 'sk' function, known as 'rs'.
     z = compute_z(abscissae.result)
-    norm.constant = compute_norm_constant(abscissae.result,z)
+    norm.constant = compute_norm_constant(abscissae.result,z, lb, ub)
     sampler <- (rs(1, S_inv, abscissae.result, z, norm.constant))[1,1]
     #If that point lies outside the bounds set by my Tk values
     if(sampler < Tk[1] | sampler > Tk[length(Tk)]){

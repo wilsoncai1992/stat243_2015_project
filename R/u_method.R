@@ -25,13 +25,13 @@ gen.abscissae <- function(abscissae.grid, h){
 #   return(norm.constant)
 # }
 
-compute_norm_constant = function(abscissae.result,z){
+compute_norm_constant = function(abscissae.result,z, lb, ub){
   all.mass <- sum(
     rep(c(-1, 1), length(abscissae.result[,3])) *
       rep(1/abscissae.result[,3], each = 2) * 
       exp(rep(abscissae.result[,2], each = 2) + 
             rep(abscissae.result[,3], each = 2) * 
-            (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)))
+            (c(lb, rep(z, each = 2), ub) - rep(abscissae.result[,1], each = 2)))
   )
   # Normalize total density such that sum to 1
   norm.constant <- -log(all.mass)
