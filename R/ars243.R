@@ -143,7 +143,28 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
 
 #-------------------------------------------------
 # ars243(n = 1e3, h = h, k = 4, domain = c(0,1))
-
-curve(dbeta(x, 3, 2), from = 0, to = 1)
+h = function(x) log(dbeta(x, 3, 2))
+exp_h = function(x) dbeta(x,3,2)
+curve(exp_h, from = 0, to = 1) 
 lines(density(ars243(n = 1e4, h = h, k = 3, domain = c(0,1))), lty=2, col='blue')
 lines(density(ars243(n = 1e4, h = h, k = 300, domain = c(0,1))), lty=2, col='blue')
+
+h_before_truncation = function(x){
+  set.seed(0)
+  # This is the data
+  n=10000
+  sigma=1
+  theta = rnorm(n,0,sigma^2)
+  total = 0
+  d = 1.06*sigma*n^{-0.2}
+  for(i in 1:n){
+    # This is the kernal function of the data.
+    total = total + dnorm((x-theta[i])/d,0,1)/(d*1000)
+  }
+  return(log(total))
+}
+h <- function(x) h_before_truncation(x)/integrate(h_before_truncation,-1,1)$value
+exp_h = function(x) exp(h(x))
+curve(h, from = -1, to = 1) 
+lines(density(ars243(n = 1e4, h = h, k = 3, domain = c(-1,1))), lty=2, col='blue')
+lines(density(ars243(n = 1e4, h = h, k = 300, domain = c(-1,1))), lty=2, col='blue')
