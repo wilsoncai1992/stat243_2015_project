@@ -147,7 +147,10 @@ h = function(x) log(dbeta(x, 3, 2))
 exp_h = function(x) dbeta(x,3,2)
 curve(exp_h, from = 0, to = 1) 
 lines(density(ars243(n = 1e4, h = h, k = 3, domain = c(0,1))), lty=2, col='blue')
-lines(density(ars243(n = 1e4, h = h, k = 300, domain = c(0,1))), lty=2, col='blue')
+lines(density(ars243(n = 1e4, h = h, k = 300, domain = c(0,1))), lty=2, col='red')
+curve(dnorm(x), from = -2, to = 2) 
+lines(density(ars243(n = 1e5, h = h, k = 4)), lty=2, col='blue')
+lines(density(ars243(n = 1e4, h = h, k = 300)), lty=2, col='red')
 
 h_before_truncation = function(x){
   set.seed(0)
