@@ -122,10 +122,11 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
         # Only evaluate the log of the function if we fail to squeeze.  Rejection step.
         hValue <- h(sampler)
         h.deriv <- grad(func = h, x = sampler)
+        abscissae.result = update(abscissae.result,sampler,hValue,h.deriv)
+        coefficients = update_coeff(coefficients,sampler,abscissae.result)
         if(uniform <= exp(hValue - uval)){
           finalValues <- c(finalValues, sampler)
-          abscissae.result = update(abscissae.result,sampler,hValue,h.deriv)
-          coefficients = update_coeff(coefficients,sampler,abscissae.result)
+          
           ############# Renee's function of check.log.concave #############
           if(check.log.concave(abscissae.result) == FALSE){
             stop("f is not log-concave!")
