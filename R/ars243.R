@@ -8,9 +8,9 @@
 # domain <- c(-Inf, Inf)
 #-----------------------------------------------------------------------------------------
 # TEMPORARY INPUT VALUE
-# h <- function(x){
-#   return(log(dnorm(x)))
-# }
+h <- function(x){
+  return(log(dnorm(x)))
+}
 h <- function(x){
   return(log(dbeta(x, 3, 2)))
 }
@@ -57,12 +57,17 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
   if (all.equal(domain, c(-Inf, Inf)) == TRUE){
     abscissae.grid <- seq(-5, 5, length.out = k)
   }else{
-    abscissae.grid <- seq(lb, ub, length.out = k)
+    abscissae.grid <- seq(lb, ub, length.out = k + 2)
     abscissae.grid <- abscissae.grid[abscissae.grid > lb & abscissae.grid < ub]
   }
   
   abscissae.result <- gen.abscissae(abscissae.grid, h)
-  
+  #-----------------------------------------------------------------------------------------
+  # Remove points where derivative is zero
+  if(sum(abscissae.result[,3] == 0) > 0){
+    abscissae.result <- abscissae.result[abscissae.result[,3] != 0,]
+  }
+  #-----------------------------------------------------------------------------------------
   ############# Renee's function of check.log.concave #############
   if(check.log.concave(abscissae.result) == FALSE){
     # expand the grid
