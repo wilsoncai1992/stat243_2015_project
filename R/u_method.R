@@ -33,13 +33,23 @@ gen.abscissae <- function(abscissae.grid, h){
 # }
 
 compute_norm_constant = function(abscissae.result,z, lb, ub){
-  all.mass <- sum(
-    rep(c(-1, 1), length(abscissae.result[,3])) *
-      rep(1/abscissae.result[,3], each = 2) * 
-      exp(rep(abscissae.result[,2], each = 2) + 
-            rep(abscissae.result[,3], each = 2) * 
-            (c(lb, rep(z, each = 2), ub) - rep(abscissae.result[,1], each = 2)))
-  )
+  if(is.infinite(lb) & is.infinite(ub)){
+    all.mass <- sum(
+      rep(c(-1, 1), length(abscissae.result[,3])) *
+        rep(1/abscissae.result[,3], each = 2) * 
+        exp(rep(abscissae.result[,2], each = 2) + 
+              rep(abscissae.result[,3], each = 2) * 
+              (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)))
+    )
+  }else{
+    all.mass <- sum(
+      rep(c(-1, 1), length(abscissae.result[,3])) *
+        rep(1/abscissae.result[,3], each = 2) * 
+        exp(rep(abscissae.result[,2], each = 2) + 
+              rep(abscissae.result[,3], each = 2) * 
+              (c(lb, rep(z, each = 2), ub) - rep(abscissae.result[,1], each = 2)))
+    )
+  }
   # Normalize total density such that sum to 1
   norm.constant <- -log(all.mass)
   return(norm.constant)
@@ -85,6 +95,7 @@ S_inv <- function(cdf, abscissae.result, z, norm.constant, lb, ub){
                           (c(lb, rep(z, each = 2), ub) - rep(abscissae.result[,1], each = 2)) +norm.constant),
                   byrow = TRUE, ncol = 2)
   mass.grid <- rowSums(cdf.z)
+  
   cum.mass <- cumsum(mass.grid)
   j <- sapply(cdf, function(it) min(which(it <= cum.mass)))
   
@@ -93,18 +104,38 @@ S_inv <- function(cdf, abscissae.result, z, norm.constant, lb, ub){
   
   z.grid <- c(z, ub)
   
-  delta.mass[j==1] <- cdf[j==1]
-  x.hat[j==1] <- (log(abscissae.result[1,3] * (delta.mass[j==1] - cdf.z[1,1])) - abscissae.result[1,2] - norm.constant)/abscissae.result[1,3] + abscissae.result[1,1]
-  x.hat[j==1][x.hat[j==1] < lb] <- lb
   
-  j.nonzero <- j[j!=1]
-  delta.mass[j!=1] <- cdf[j!=1] - cum.mass[j.nonzero - 1]#[j.nonzero - 1]
-  partial.formula <- exp(abscissae.result[j.nonzero,2] + abscissae.result[j.nonzero,3] * (z.grid[j.nonzero - 1] - abscissae.result[j.nonzero,1]) + norm.constant) + delta.mass[j!=1] * abscissae.result[j.nonzero,3]
-  x.hat[j!=1] <- (log(partial.formula) - abscissae.result[j.nonzero,2] - norm.constant) / abscissae.result[j.nonzero,3] + abscissae.result[j.nonzero,1]
+  if(is.infinite(lb) & is.infinite(ub)){
+    delta.mass[j==1] <- cdf[j==1]
+    x.hat[j==1] <- (log(abscissae.result[1,3] * delta.mass[j==1]) - abscissae.result[1,2] - norm.constant)/abscissae.result[1,3] + abscissae.result[1,1]
+    
+    j.nonzero <- j[j!=1]
+    delta.mass[j!=1] <- cdf[j!=1] - cum.mass[j.nonzero - 1]#[j.nonzero - 1]
+    partial.formula <- exp(abscissae.result[j.nonzero,2] + abscissae.result[j.nonzero,3] * (z.grid[j.nonzero - 1] - abscissae.result[j.nonzero,1]) + norm.constant) + delta.mass[j!=1] * abscissae.result[j.nonzero,3]
+    x.hat[j!=1] <- (log(partial.formula) - abscissae.result[j.nonzero,2] - norm.constant) / abscissae.result[j.nonzero,3] + abscissae.result[j.nonzero,1]
+    
+    j.last <- j[j==length(cum.mass)]
+    # x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (delta.mass[j==length(cum.mass)] - tail(mass.grid, 1))) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
+    x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (cdf[j==length(cum.mass)] - 1.0)*as.integer((cdf[j==length(cum.mass)] - 1.0) <= 0)) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
+  }else{
+    delta.mass[j==1] <- cdf[j==1]
+    x.hat[j==1] <- (log(abscissae.result[1,3] * (delta.mass[j==1] - cdf.z[1,1])) - abscissae.result[1,2] - norm.constant)/abscissae.result[1,3] + abscissae.result[1,1]
+    x.hat[j==1][x.hat[j==1] < lb] <- lb
+    
+    j.nonzero <- j[j!=1]
+    delta.mass[j!=1] <- cdf[j!=1] - cum.mass[j.nonzero - 1]#[j.nonzero - 1]
+    partial.formula <- exp(abscissae.result[j.nonzero,2] + abscissae.result[j.nonzero,3] * (z.grid[j.nonzero - 1] - abscissae.result[j.nonzero,1]) + norm.constant) + delta.mass[j!=1] * abscissae.result[j.nonzero,3]
+    x.hat[j!=1] <- (log(partial.formula) - abscissae.result[j.nonzero,2] - norm.constant) / abscissae.result[j.nonzero,3] + abscissae.result[j.nonzero,1]
+    
+    j.last <- j[j==length(cum.mass)]
+    # x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (delta.mass[j==length(cum.mass)] - tail(mass.grid, 1))) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
+    x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (cdf[j==length(cum.mass)] - 1.0 + tail(as.vector(cdf.z),1))*as.integer((cdf[j==length(cum.mass)] - 1.0) <= 0)) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
+  }
+
+ 
   
-  j.last <- j[j==length(cum.mass)]
-  # x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (delta.mass[j==length(cum.mass)] - tail(mass.grid, 1))) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
-  x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (cdf[j==length(cum.mass)] - 1.0 + tail(as.vector(cdf.z),1))*as.integer((cdf[j==length(cum.mass)] - 1.0) <= 0)) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
+  
+  
   
   return(x.hat)
 }
