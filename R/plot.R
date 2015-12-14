@@ -2,6 +2,8 @@
 set.seed(0)
 k=30
 h = function(x) log(dbeta(x, 3, 2))
+lb <- 0
+ub <- 1
 abscissae.grid <- seq(lb, ub, length.out = k)
 abscissae.grid <- abscissae.grid[abscissae.grid > lb & abscissae.grid < ub]
 abscissae.result <- gen.abscissae(abscissae.grid, h)
@@ -9,8 +11,7 @@ Tk = abscissae.result[,1]
 h_Tk = abscissae.result[,2]
 coefficients <- lupdater(Tk,h_Tk)
 finalValues = c()
-lb <- 0
-ub <- 1
+
 
 #The value of the lower bound is calculated from this chord, found with binary.
 lvalf <- function(sampler) lowerbound(sampler,coefficients,index)
@@ -82,7 +83,7 @@ for( i in 1:10){
  
 df = data.frame(x, y, Z) 
 
-pl + geom_point(data=df, aes(x = x, y = y,colour = Z))  
+pl + geom_point(data=df, aes(x = x, y = y,colour = Z))  + xlim(0.1, 1)
 
 
 
