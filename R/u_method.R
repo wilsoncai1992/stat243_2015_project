@@ -2,17 +2,37 @@
 check.log.concave <- function(abscissae.result){
   deriv.seq <- abscissae.result[,3]
   is.concave <- (deriv.seq[1] > 0) & (tail(deriv.seq, 1) < 0)
+  #-----------------------------------------------------------------------------------------
+  # in case of exponential, directly pass check
+  hp_T <- abscissae.result[,3]
+  names(hp_T) <- NULL
+  if( all.equal(hp_T, rep(hp_T[1], length(hp_T))) == TRUE ) { is.concave <- TRUE } 
+  #-----------------------------------------------------------------------------------------
   return(is.concave)
 }
 #################################################################
 #-----------------------------------------------------------------------------------------
 # Fixed k points to create abscissae
-gen.abscissae <- function(abscissae.grid, h){
+gen.abscissae <- function(abscissae.grid, h, lb, ub){
   library(numDeriv)
   
   h.x <- h(abscissae.grid)
   h.deriv <- grad(func = h, x = abscissae.grid)
   abscissae.result <- cbind(abscissae.grid, h.x, h.deriv)
+  #-----------------------------------------------------------------------------------------
+  # in case of exponential, we can continue simulation by defining zi be the domain bounds 
+  hp_T <- abscissae.result[,3]
+  # med <- median(1:length(hp_T))
+  # to.pick <- c(ceiling(med - 0.5), ceiling(med + 0.5))
+  # to.pick <- c(1, length(hp_T))
+  # if( all.equal(hp_T, rep(hp_T[1], length(hp_T))) == TRUE ) { abscissae.result <- abscissae.result[to.pick,] } 
+  if( all.equal(hp_T, rep(hp_T[1], length(hp_T))) == TRUE ) {
+    abscissae.grid <- c(lb + 1e-3, ub - 1e-3)
+    h.x <- h(abscissae.grid)
+    h.deriv <- grad(func = h, x = abscissae.grid)
+    abscissae.result <- cbind(abscissae.grid, h.x, h.deriv)
+  } 
+  #-----------------------------------------------------------------------------------------
   return(abscissae.result)
 }
 #-----------------------------------------------------------------------------------------
@@ -131,8 +151,8 @@ S_inv <- function(cdf, abscissae.result, z, norm.constant, lb, ub){
     # x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (delta.mass[j==length(cum.mass)] - tail(mass.grid, 1))) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
     x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (cdf[j==length(cum.mass)] - 1.0 + tail(as.vector(cdf.z),1))*as.integer((cdf[j==length(cum.mass)] - 1.0) <= 0)) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
   }
-
- 
+  
+  
   
   
   
@@ -192,58 +212,75 @@ lupdater <- function(Tk,h_Tk){
 # and the point to be added, x_star, and h_star=h(x_star), h_p_star = h'(x_star).
 # The outputs are the coordinates and derivative of abscissae with a new point added, as a matrix with three columns, each recording x_coord, y_coord and derivatives.
 update <- function(original_abs,x_star,h_star,h_deri_star){
-  # Represent the information about x_star as a vector.
-  added_abs = c(x_star,h_star,h_deri_star)
-  # Add the new point to the original abscissae.
-  updated_abs = rbind(added_abs,original_abs)
-  # Sort by the x coordinates in ascending order.
-  updated_abs = updated_abs[order(updated_abs[,1]),]
+  #-----------------------------------------------------------------------------------------
+  # in case of exponential, directly not update
+  hp_T <- original_abs[,3]
+  names(hp_T) <- NULL
+  if( all.equal(hp_T, rep(hp_T[1], length(hp_T))) == TRUE ) { 
+    updated_abs <- original_abs
+  }else{
+    #-----------------------------------------------------------------------------------------
+    # Represent the information about x_star as a vector.
+    added_abs = c(x_star,h_star,h_deri_star)
+    # Add the new point to the original abscissae.
+    updated_abs = rbind(added_abs,original_abs)
+    # Sort by the x coordinates in ascending order.
+    updated_abs = updated_abs[order(updated_abs[,1]),]
+  } 
   return(updated_abs)
 }
 
 
 # This function updates the coefficient matrix.
 update_coeff <- function(coefficients,x_star,updated_abscissae.result){
-  # The index of the added point:
-  Tk = updated_abscissae.result[,1] 
-  h_Tk = updated_abscissae.result[,2] 
-  i_added = which(Tk == x_star)
-  h_star = h_Tk[i_added]
-  
-  # Update the coefficient matrix.
-  if(i_added<length(Tk) && i_added>1){
-#     coefficients[i_added-1,1] <- (h_Tk[i_added-1]-h_Tk[i_added]) / (Tk[i_added-1]-Tk[i_added])   
-#     coefficients[i_added-1,2] <- h_Tk[i_added-1] - coefficients[i_added-1,1] * Tk[i_added-1]
-#     new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
-#     new_row = c(new_x,h_star-new_x*x_star)
-    # updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row,
-                                 # coefficients[i_added:length(coefficients[,1]),])
-    new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
-    new_row = c(new_x,h_star-new_x*x_star)
-    if(i_added<=length(coefficients[,1])){
-      updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row,
-                                   coefficients[i_added:length(coefficients[,1]),])
-    }else{
-      updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row)
+  #-----------------------------------------------------------------------------------------
+  # in case of exponential, directly not update
+  hp_T <- updated_abscissae.result[,3]
+  names(hp_T) <- NULL
+  if( all.equal(hp_T, rep(hp_T[1], length(hp_T))) == TRUE ) { 
+    updated_coefficients <- coefficients 
+  }else{
+    #-----------------------------------------------------------------------------------------
+    # The index of the added point:
+    Tk = updated_abscissae.result[,1] 
+    h_Tk = updated_abscissae.result[,2] 
+    i_added = which(Tk == x_star)
+    h_star = h_Tk[i_added]
+    
+    # Update the coefficient matrix.
+    if(i_added<length(Tk) && i_added>1){
+      #     coefficients[i_added-1,1] <- (h_Tk[i_added-1]-h_Tk[i_added]) / (Tk[i_added-1]-Tk[i_added])   
+      #     coefficients[i_added-1,2] <- h_Tk[i_added-1] - coefficients[i_added-1,1] * Tk[i_added-1]
+      #     new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
+      #     new_row = c(new_x,h_star-new_x*x_star)
+      # updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row,
+      # coefficients[i_added:length(coefficients[,1]),])
+      new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
+      new_row = c(new_x,h_star-new_x*x_star)
+      if(i_added<=length(coefficients[,1])){
+        updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row,
+                                     coefficients[i_added:length(coefficients[,1]),])
+      }else{
+        updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row)
+      }
+      updated_coefficients[i_added-1,1] <- (h_Tk[i_added-1]-h_Tk[i_added]) / (Tk[i_added-1]-Tk[i_added])   
+      updated_coefficients[i_added-1,2] <- h_Tk[i_added-1] - updated_coefficients[i_added-1,1] * Tk[i_added-1]
+      
+      #     updated_coefficients = rbind(coefficients[1:(i_added-2),],new_row,
+      #                                  coefficients[(i_added-1):length(coefficients[,1]),])
+      
     }
-    updated_coefficients[i_added-1,1] <- (h_Tk[i_added-1]-h_Tk[i_added]) / (Tk[i_added-1]-Tk[i_added])   
-    updated_coefficients[i_added-1,2] <- h_Tk[i_added-1] - updated_coefficients[i_added-1,1] * Tk[i_added-1]
     
-#     updated_coefficients = rbind(coefficients[1:(i_added-2),],new_row,
-#                                  coefficients[(i_added-1):length(coefficients[,1]),])
-    
-  }
-  
-  if(i_added == 1){
-    new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
-    new_column = c(new_x,h_star-new_x*x_star)
-    updated_coefficients = rbind(new_column, coefficients)
-  }
-  if(i_added == length(Tk)){
-    new_x = (h_star-h_Tk[length(h_Tk)-1]) / (x_star-Tk[length(Tk)-1])   
-    new_column = c(new_x,h_star-new_x*x_star)
-    updated_coefficients = rbind(coefficients,new_column)
-  }
-  
+    if(i_added == 1){
+      new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
+      new_column = c(new_x,h_star-new_x*x_star)
+      updated_coefficients = rbind(new_column, coefficients)
+    }
+    if(i_added == length(Tk)){
+      new_x = (h_star-h_Tk[length(h_Tk)-1]) / (x_star-Tk[length(Tk)-1])   
+      new_column = c(new_x,h_star-new_x*x_star)
+      updated_coefficients = rbind(coefficients,new_column)
+    }
+  } 
   return(updated_coefficients)
 }

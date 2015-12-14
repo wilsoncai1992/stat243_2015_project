@@ -6,6 +6,7 @@
 # k <- 100
 # n <- 1000
 # domain <- c(-Inf, Inf)
+
 #-----------------------------------------------------------------------------------------
 # TEMPORARY INPUT VALUE
 h <- function(x){
@@ -13,6 +14,9 @@ h <- function(x){
 }
 h <- function(x){
   return(log(dbeta(x, 3, 2)))
+}
+h <- function(x){
+  return(log(dexp(x, 1)))
 }
 k <- 4
 n <- 1000
@@ -61,7 +65,7 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
     abscissae.grid <- abscissae.grid[abscissae.grid > lb & abscissae.grid < ub]
   }
   
-  abscissae.result <- gen.abscissae(abscissae.grid, h)
+  abscissae.result <- gen.abscissae(abscissae.grid, h, lb, ub)
   #-----------------------------------------------------------------------------------------
   # Remove points where derivative is zero
   if(sum(abscissae.result[,3] == 0) > 0){
@@ -73,7 +77,7 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
     # expand the grid
     abscissae.grid <- seq(lb, ub, length.out = 2 * k)
     abscissae.grid <- abscissae.grid[abscissae.grid > lb & abscissae.grid < ub]
-    abscissae.result <- gen.abscissae(abscissae.grid, h)
+    abscissae.result <- gen.abscissae(abscissae.grid, h, lb, ub)
     
     if(check.log.concave(abscissae.result) == FALSE){
       # If still not log concave
@@ -89,6 +93,9 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
   coefficients <- lupdater(Tk,h_Tk)
   # Run the code until we hit the desired length
   while(length(finalValues) < n){
+    # WILSON
+    Tk = abscissae.result[,1]
+    h_Tk = abscissae.result[,2]
     #Take a random point from the 'sk' function, known as 'rs'.
     z = compute_z(abscissae.result)
     norm.constant = compute_norm_constant(abscissae.result,z, lb, ub)
@@ -146,7 +153,7 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
   }
   #I was printing the length of Tk to see how many points I updated with (typically 
   #it ends up being 15-30).
-  print(paste('Total number of abscissae grid point:', length(coefficients[,1])) )
+  print(paste('Total number of abscissae grid point:', length(Tk)) )
   return(finalValues)
 }
 
@@ -158,8 +165,11 @@ curve(exp_h, from = 0, to = 1)
 lines(density(ars243(n = 1e4, h = h, k = 4, domain = c(0,1))), lty=2, col='blue')
 lines(density(ars243(n = 1e4, h = h, k = 300, domain = c(0,1))), lty=2, col='red')
 curve(dnorm(x), from = -2, to = 2) 
-lines(density(ars243(n = 1e5, h = h, k = 5)), lty=2, col='blue')
+lines(density(ars243(n = 1e5, h = h, k = 4)), lty=2, col='blue')
 lines(density(ars243(n = 1e4, h = h, k = 300)), lty=2, col='red')
+curve(dexp(x, 1), from = 0, to = 2) 
+lines(density(ars243(n = 1e4, h = h, k = 4, domain = c(0,2))), lty=2, col='blue')
+lines(density(ars243(n = 1e4, h = h, k = 300, domain = c(0,2))), lty=2, col='red')
 
 h_before_truncation = function(x){
   set.seed(0)
@@ -178,6 +188,7 @@ h_before_truncation = function(x){
 h <- function(x) h_before_truncation(x)/integrate(h_before_truncation,-1,1)$value
 exp_h = function(x) exp(h(x))
 curve(h, from = -1, to = 1) 
+# curve(exp_h, from = -1, to = 1) 
 lines(density(ars243(n = 1e4, h = h, k = 3, domain = c(-1,1))), lty=2, col='blue')
 lines(density(ars243(n = 1e4, h = h, k = 300, domain = c(-1,1))), lty=2, col='blue')
 
