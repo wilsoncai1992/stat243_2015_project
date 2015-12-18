@@ -221,7 +221,7 @@ update <- function(original_abs,x_star,h_star,h_deri_star){
   }else{
     #-----------------------------------------------------------------------------------------
     # Represent the information about x_star as a vector.
-    added_abs = c(x_star,h_star,h_deri_star)
+    added_abs = cbind(x_star,h_star,h_deri_star)
     # Add the new point to the original abscissae.
     updated_abs = rbind(added_abs,original_abs)
     # Sort by the x coordinates in ascending order.

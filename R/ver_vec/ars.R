@@ -71,94 +71,55 @@ ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
         stop("f is not log-concave! Or k is too small.")
       }
     }
-    #################################################################
     
-    Tk = abscissae.result[,1]
-    h_Tk = abscissae.result[,2]
-    #'Coefficients' are the slope and y intercept associated with each chord in the 'l'
-    #function  They are in a matrix that gets created by 'lupdater'.
-    coefficients <- lupdater(Tk,h_Tk)
-    # Run the code until we hit the desired length
     while(length(finalValues) < n){
       Tk = abscissae.result[,1]
       h_Tk = abscissae.result[,2]
+      coefficients <- lupdater(Tk,h_Tk)
       #Take a random point from the 'sk' function, known as 'rs'.
       z = compute_z(abscissae.result)
       norm.constant = compute_norm_constant(abscissae.result,z, lb, ub)
       # Wilson
       sampler <- as.vector(rs(M, S_inv, abscissae.result, z, norm.constant, lb, ub))
       #If that point lies outside the bounds set by my Tk values
-      if(sampler < Tk[1] | sampler > Tk[length(Tk)]){
-        # In this case, we need to evalue h,h'
-        hValue <- h(sampler)
-        h.deriv <- grad(func = h, x = sampler)
+      condition1 =  (sampler < Tk[1] | sampler > Tk[length(Tk)])
+      sampler_rejected_in_1 = sampler[condition1]
+      sampler_accepted_in_1 = sampler[condition1 == FALSE]
+      #The value of the lower bound is calculated from this chord, found with binary.
+      lval <- sapply(sampler_accepted_in_1, function(sampler) lowerbound(sampler,coefficients,binary(Tk, sampler)))
+      #The value of the upper bound is calculated by Wilson.
+      uval <- sapply(sampler_accepted_in_1, function(x) du.unnormalized(x, abscissae.result, z, lb, ub))
+      uniform = runif(length(sampler_accepted_in_1))
+      
+      condition2 = (uniform <= exp(lval - uval)) 
+      sampler_rejected_in_2 = sampler_accepted_in_1[condition2 == FALSE] 
+      sampler_accepted_in_2 = sampler_accepted_in_1[condition2]
+      uniform_rejected_in_2 = uniform[condition2 == FALSE] 
+      uval_rejected_in_2 = uval[condition2 == FALSE]
+      # Phase 2
+      sampler_rejected_in_phase_1 = c(sampler_rejected_in_1,sampler_rejected_in_2)
+      h_rejected_in_phase_1 = h(sampler_rejected_in_phase_1) 
+      h.deriv <- grad(func = h, x = sampler_rejected_in_phase_1) 
+      uniform_in_phase_2 = c(runif(length(sampler_rejected_in_1)),uniform_rejected_in_2)
+      if(length(sampler_rejected_in_1)!=0){
+        uval = c(sapply(sampler_rejected_in_1, function(x) du.unnormalized(x, abscissae.result, z, lb, ub)),
+                 uval_rejected_in_2)
         
-        # Update abscissae.result and coefficients.
-        abscissae.result = update(abscissae.result,sampler,hValue,h.deriv)
-        # coefficients = update_coeff(coefficients,sampler,abscissae.result)
-        Tk = abscissae.result[,1]
-        h_Tk = abscissae.result[,2]
-        coefficients <- lupdater(Tk,h_Tk)
-        ############# Renee's function of check.log.concave #############
-        if(check.log.concave(abscissae.result) == FALSE){
-          stop("f is not log-concave!")
-        }
-        #################################################################
-        #First we run a binary search to find which chord the point finds itself within.
-        index <- binary(Tk, sampler)
-        
-        #The value of the lower bound is calculated from this chord, found with binary.
-        lval <- lowerbound(sampler,coefficients,index)
-        
-        #The value of the upper bound is calculated by Wilson.
-        uval <- du.unnormalized(sampler, abscissae.result, z, lb, ub)
-        
-        #We also grab a number from the uniform distribution.
-        # wilson
-        uniform <- runif(M)  
-        
-        hValue <- h(sampler)
-        h.deriv <- grad(func = h, x = sampler)
-        if(uniform <= exp(hValue - uval)){
-          finalValues <- c(finalValues, sampler)
-        }
-      }else{ 
-        #First we run a binary search to find which chord the point finds itself within.
-        index <- binary(Tk, sampler)
-        
-        #The value of the lower bound is calculated from this chord, found with binary.
-        lval <- lowerbound(sampler,coefficients,index)
-        
-        #The value of the upper bound is calculated by Wilson.
-        uval <- du.unnormalized(sampler, abscissae.result, z, lb, ub)
-        
-        #We also grab a number from the uniform distribution.
-        # wilson
-        uniform <- runif(M)  
-        
-        #The big IF statements, this one's the 'squeezing' step
-        if(uniform <= exp(lval - uval)){
-          finalValues <- c(finalValues, sampler)
-          
-        }else{
-          # Only evaluate the log of the function if we fail to squeeze.  Rejection step.
-          hValue <- h(sampler)
-          h.deriv <- grad(func = h, x = sampler)
-          abscissae.result = update(abscissae.result,sampler,hValue,h.deriv)
-          # coefficients = update_coeff(coefficients,sampler,abscissae.result)
-          Tk = abscissae.result[,1]
-          h_Tk = abscissae.result[,2]
-          coefficients <- lupdater(Tk,h_Tk)
-          if(uniform <= exp(hValue - uval)){
-            finalValues <- c(finalValues, sampler)
-            
-            ############# Renee's function of check.log.concave #############
-            if(check.log.concave(abscissae.result) == FALSE){
-              stop("f is not log-concave!")
-            }
-            #################################################################
-          }
-        }
+      }else{
+        uval = uval_rejected_in_2
+      }
+      if(length(uval!=0)){
+        condition2 = (uniform_in_phase_2 < exp(h_rejected_in_phase_1-uval))
+        sampler_accepted_in_phase_2 = sampler_rejected_in_phase_1[condition2]
+      }else{
+        sampler_accepted_in_phase_2=c()
+      }
+      # Add accepted samples.  
+      finalValues=c(finalValues,sampler_accepted_in_1,sampler_accepted_in_phase_2)
+      abscissae.result = update(abscissae.result,sampler_rejected_in_phase_1,h_rejected_in_phase_1,h.deriv)
+      
+      if(check.log.concave(abscissae.result) == FALSE){
+        stop("f is not log-concave!")
       }
     }
     #I was printing the length of Tk to see how many points I updated with (typically 
