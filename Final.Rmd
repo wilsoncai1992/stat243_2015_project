@@ -1,0 +1,565 @@
+---
+title: "-----------------Stat 243 Final Project-----------------      
+Repository Name:  github.com/wilsoncai1992/stat243_2015_project"
+author: "Weixin Cai (wilsoncai1992), Jianbo Chen (Jianbo1992), HR Huber-Rodriguez (HRHuber), Chenyu Wang (Chenyu-Renee)"
+date: "December 17, 2015"
+output: pdf_document
+---
+
+*Outline and Overview*
+
+  Our final project for Statistics 243 was to create an adaptive rejection sampling (ARS) package in R, a process outlined by W.R. Gilks in his 19992 paper, “Derivative-free Adaptive Rejection Sampling for Gibbs Sampling.”  The code required to execute this process is inherently modular, and other steps including testing, packaging and plotting helped to distill the project into discrete components that could be worked on simultaneously by various members of the group.  
+  
+  
+  The function itself, titled ars243, takes as mandatory inputs a function and a desired number of sample points, ‘n’.  It also optionally takes the log of the function (which replaces the function if input), the starting number of Tk points, and the domain of the function.  A combination of higher level functions, lower level functions and input checks make up the three components of the code.  Checks make sure that the input distribution is log concave, that there are enough initial TK points, and that the domain over which the distribution exists is correct.  High level functions check to see if sampled points are squeezed or rejected.  They call on lower level functions, which complete tasks such as updating the the TK points, re-evaluating the upper and lower envelopes, and running a binary search to probe which section of these piecewise functions is used to evaluate a particular point.
+
+
+*Individual Functions*
+
+  The first section of code checks for input validity.  It sets the upper and lower bounds as given by the domain (or infinity as default), creates a minimum of 4 initial Tk points, and makes sure the given function is indeed a function, or else it converts it to one, and takes its log, as is required by the procedure.  We then initiate our ultimate ‘final values’ vector and create the grid of abscissa points, equal to the value of the input parameter ‘k’, given.  Points are removed where the derivative is equal to zero, and the initial abscissae is complete.
+
+  Next, a check for log concavity is performed on the abscissae grid.  If the function doesn’t appear to be log concave by checking the derivatives at the left and right end, then the function is ceased and an error message appears.  This can also occur if not enough Tk points are given.
+Now we are into the meat of the code.  The ‘lupdater’ function, a lower level function that draws the required chords of the lower envelope, is called once.  It places the slope and the y intercept in a two column matrix, with rows equal to the current number of Tk points.  New coefficients are returned every time the function is updated with a new Tk value.  
+
+  Next we enter a large while loop, that runs so long as the desired number of sampled points, ‘n’, has yet to be accepted.  The z value is computed, and a random sample point from the function is drawn, as chosen by the lower level function ‘rs’, the inverse sampling function..  If that point falls outside the current bounds of the Tk points, that point is added and the lower level chords (and their respective coefficients) are updated with ‘lupdater’.  Next, another lower level function, a binary search engine, is called to find which chord corresponds to the chosen sample point.  The coefficients are applied to calculate the lower bound value, and the function ‘du.unnormalized’ is called to compute the upper bound.    
+  
+  That lower level function, ‘du.unnormalized’, is a workhorse that takes as inputs the sampled point, the current abscissae, the z value and the lower and upper bounds and computes the value of the upper envelope.  This involves another sub-function which computes the normalization constant, ‘c’, and integrates over the upper envelope.
+  
+  Once both the lower and upper bound are computed, we grab a random number from the uniform distribution, as is part of the ARS process.  If the uniform value is less than than the difference between the exponentials of the log value and the upper envelope value (aka the squeezing test), the point is immediately accepted and the TK abscissae updated.  If not, then we check that the uniform point is less than the difference between the exponents of the lower and upper function values.  If this is true, then the point is accepted, else it is rejected.  We only evaluate the log of that point if we fail to squeeze, as it is computationally expensive.
+  
+  Once we’ve reached the desired number of sampled points, the while loop ceases, the function is halted and the vector of final values is returned.
+
+*Group Member Responsibilities*
+
+  Weixin Cai served as the chief architect of the algorithm and the leader of the project.  Meeting with members individually and together, Weixin broke down the process into four critical sections and helped to make sure each group member was both involved in and informed of each section while maintaining leadership over one section in particular.  He also served as the chief manager of the GitHub repository and was the go-to member for coding questions and general outline.
+	
+  Weixin himself also wrote the invaluable and computationally difficult underlying code that computed the upper envelope piecewise function, all in vectorized fashion.  This involved subfunctions that: a) created an abscissae of ‘k’ starting Tk points, b) integrated over the exponentiated upper envelope, and c) computed the inverse sampling of the upper envelope density.  He also offered guidance on vectorizing the rest of the code, testing, formulating checks, warnings and error messages, and building the R package.
+
+  HR Huber-Rodriguez was chiefly in charge of the second level of the function; the creation of the linear lower bound piecewise function.  This was done by creating a matrix of slope and y-intercept coefficients for all chords associated with Tk values, running a binary search on each sampled point to find the correct chord, and drawing new chords from the updated Tk points.  He was also responsible for implementing the squeezing and rejection steps of the rejection sampling process and for returning the ultimate vector of sampled points.  HR also tested the code on a variety of standard distributions by using R’s built-in density functions of these distributions and comparing the similarity of the results to a random generation from the same distribution using the KS test.
+
+  Jianbo Chen was responsible for writing the updating step of the function, which involved locating the index of the desired point, calculating the associated coefficients for the upper and lower functions, and updating those functions directly.  Because adaptive rejection sampling is often used when a density function is computationally expensive to evaluate, Jianbo proposed testing the code by evaluating a kernel density function, which can be found in the package manual.  He generated graphs and plots that more clearly demonstrate the process of adaptive rejection sampling, found at the end of this report.  Jianbo also offered suggestions on the vectorization of the code as well as ways to increase speed and efficiency.
+
+  Chenyu Wang was chiefly responsible for compiling all the sections of code into one compact R package, and wrote the entire manual. She was responsible for writing the accompanying documentation and implemented the testing function within the package.  She also designed the crucial check for log concavity, which is paramount to correct usage of the algorithm, by ensuing that the derivative of the left end-point was greater than the derivative of the right end-point.
+
+  As a whole, the project came together piece by piece, with group members often offering input on one another’s sections to ensure familiarity with the goal of the project as well as with the idiosyncrasies of individual sections of code, which would require tidy sutures in order to weave together one coherent algorithm and one effective R package.
+
+*Plot*
+
+The following plot shows the upper and lower bound functions for a normal distribution, with k = 5.  
+```{r, shit, echo = FALSE}
+############# Renee's function of check.log.concave #############
+check.log.concave <- function(abscissae.result){
+  deriv.seq <- abscissae.result[,3]
+  is.concave <- (deriv.seq[1] > 0) & (tail(deriv.seq, 1) < 0)
+  #-----------------------------------------------------------------------------------------
+  # in case of exponential, directly pass check
+  hp_T <- abscissae.result[,3]
+  names(hp_T) <- NULL
+  if( all.equal(hp_T, rep(hp_T[1], length(hp_T))) == TRUE ) { is.concave <- TRUE } 
+  #-----------------------------------------------------------------------------------------
+  return(is.concave)
+}
+#################################################################
+#-----------------------------------------------------------------------------------------
+# Fixed k points to create abscissae
+gen.abscissae <- function(abscissae.grid, h, lb, ub){
+  library(numDeriv)
+  
+  h.x <- h(abscissae.grid)
+  h.deriv <- grad(func = h, x = abscissae.grid)
+  abscissae.result <- cbind(abscissae.grid, h.x, h.deriv)
+  #-----------------------------------------------------------------------------------------
+  # in case of exponential, we can continue simulation by defining zi be the domain bounds 
+  hp_T <- abscissae.result[,3]
+  # med <- median(1:length(hp_T))
+  # to.pick <- c(ceiling(med - 0.5), ceiling(med + 0.5))
+  # to.pick <- c(1, length(hp_T))
+  # if( all.equal(hp_T, rep(hp_T[1], length(hp_T))) == TRUE ) { abscissae.result <- abscissae.result[to.pick,] } 
+  if( all.equal(hp_T, rep(hp_T[1], length(hp_T))) == TRUE ) {
+    abscissae.grid <- c(lb + 1e-3, ub - 1e-3)
+    h.x <- h(abscissae.grid)
+    h.deriv <- grad(func = h, x = abscissae.grid)
+    abscissae.result <- cbind(abscissae.grid, h.x, h.deriv)
+  } 
+  #-----------------------------------------------------------------------------------------
+  return(abscissae.result)
+}
+#-----------------------------------------------------------------------------------------
+# # Integate over exponentiated upper envelope
+
+# Compute the norm.constant.
+# compute_norm_constant = function(abscissae.result, z){
+#   all.mass <- sum(
+#     rep(c(-1, 1), length(abscissae.result[,3])) *
+#       rep(1/abscissae.result[,3], each = 2) * 
+#       exp(rep(abscissae.result[,2], each = 2) + 
+#             rep(abscissae.result[,3], each = 2) * 
+#             (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)))
+#   )
+#   # Normalize total density such that sum to 1
+#   norm.constant <- -log(all.mass)
+#   return(norm.constant)
+# }
+
+compute_norm_constant = function(abscissae.result,z, lb, ub){
+  if(is.infinite(lb) & is.infinite(ub)){
+    all.mass <- sum(
+      rep(c(-1, 1), length(abscissae.result[,3])) *
+        rep(1/abscissae.result[,3], each = 2) * 
+        exp(rep(abscissae.result[,2], each = 2) + 
+              rep(abscissae.result[,3], each = 2) * 
+              (c(-Inf, rep(z, each = 2), Inf) - rep(abscissae.result[,1], each = 2)))
+    )
+  }else{
+    all.mass <- sum(
+      rep(c(-1, 1), length(abscissae.result[,3])) *
+        rep(1/abscissae.result[,3], each = 2) * 
+        exp(rep(abscissae.result[,2], each = 2) + 
+              rep(abscissae.result[,3], each = 2) * 
+              (c(lb, rep(z, each = 2), ub) - rep(abscissae.result[,1], each = 2)))
+    )
+  }
+  # Normalize total density such that sum to 1
+  norm.constant <- -log(all.mass)
+  return(norm.constant)
+}
+
+# Compute z.
+compute_z = function(abscissae.result){
+  diff.h <- diff(abscissae.result[,2])
+  xh.deriv <- abscissae.result[,1] * abscissae.result[,3]
+  diff.xh.deriv <- diff(xh.deriv)
+  diff.h.deriv <- diff(abscissae.result[,3])
+  z <- (diff.h - diff.xh.deriv)/ (-diff.h.deriv)
+  return(z)
+}
+
+
+
+
+# UN-normaized version of upper envelope (not exponentiated)
+du.unnormalized <- function(x, abscissae.result, z, lb, ub){
+  j <- sapply(x, function(it) min(which(it <= c(z, ub))))
+  dens.u <- abscissae.result[j, 2] + (x - abscissae.result[j, 1]) * abscissae.result[j, 3]
+  return(dens.u)
+}
+
+# Normaized version of upper envelope (not exponentiated).
+du.normalized <- function(x, abscissae.result, z, norm.constant, lb, ub){
+  j <- sapply(x, function(it) min(which(it <= c(z, ub))))
+  dens.u <- abscissae.result[j, 2] + (x - abscissae.result[j, 1]) * abscissae.result[j, 3] + norm.constant
+  return(dens.u)
+}
+
+
+#-----------------------------------------------------------------------------------------
+# Inverse sampling of upper enelope density
+#-----------------------------------------------------------------------------------------
+# Inverse cdf of S
+S_inv <- function(cdf, abscissae.result, z, norm.constant, lb, ub){
+  cdf.z <- matrix(rep(c(-1, 1), length(abscissae.result[,3])) *
+                    rep(1/abscissae.result[,3], each = 2) * 
+                    exp(rep(abscissae.result[,2], each = 2) + 
+                          rep(abscissae.result[,3], each = 2) * 
+                          (c(lb, rep(z, each = 2), ub) - rep(abscissae.result[,1], each = 2)) +norm.constant),
+                  byrow = TRUE, ncol = 2)
+  mass.grid <- rowSums(cdf.z)
+  
+  cum.mass <- cumsum(mass.grid)
+  j <- sapply(cdf, function(it) min(which(it <= cum.mass)))
+  
+  delta.mass <- matrix(nrow = length(j), ncol = 1)
+  x.hat <- matrix(nrow = length(j), ncol = 1)
+  
+  z.grid <- c(z, ub)
+  
+  
+  if(is.infinite(lb) & is.infinite(ub)){
+    delta.mass[j==1] <- cdf[j==1]
+    x.hat[j==1] <- (log(abscissae.result[1,3] * delta.mass[j==1]) - abscissae.result[1,2] - norm.constant)/abscissae.result[1,3] + abscissae.result[1,1]
+    
+    j.nonzero <- j[j!=1]
+    delta.mass[j!=1] <- cdf[j!=1] - cum.mass[j.nonzero - 1]#[j.nonzero - 1]
+    partial.formula <- exp(abscissae.result[j.nonzero,2] + abscissae.result[j.nonzero,3] * (z.grid[j.nonzero - 1] - abscissae.result[j.nonzero,1]) + norm.constant) + delta.mass[j!=1] * abscissae.result[j.nonzero,3]
+    x.hat[j!=1] <- (log(partial.formula) - abscissae.result[j.nonzero,2] - norm.constant) / abscissae.result[j.nonzero,3] + abscissae.result[j.nonzero,1]
+    
+    j.last <- j[j==length(cum.mass)]
+    # x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (delta.mass[j==length(cum.mass)] - tail(mass.grid, 1))) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
+    x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (cdf[j==length(cum.mass)] - 1.0)*as.integer((cdf[j==length(cum.mass)] - 1.0) <= 0)) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
+  }else{
+    delta.mass[j==1] <- cdf[j==1]
+    x.hat[j==1] <- (log(abscissae.result[1,3] * (delta.mass[j==1] - cdf.z[1,1])) - abscissae.result[1,2] - norm.constant)/abscissae.result[1,3] + abscissae.result[1,1]
+    x.hat[j==1][x.hat[j==1] < lb] <- lb
+    
+    j.nonzero <- j[j!=1]
+    delta.mass[j!=1] <- cdf[j!=1] - cum.mass[j.nonzero - 1]#[j.nonzero - 1]
+    partial.formula <- exp(abscissae.result[j.nonzero,2] + abscissae.result[j.nonzero,3] * (z.grid[j.nonzero - 1] - abscissae.result[j.nonzero,1]) + norm.constant) + delta.mass[j!=1] * abscissae.result[j.nonzero,3]
+    x.hat[j!=1] <- (log(partial.formula) - abscissae.result[j.nonzero,2] - norm.constant) / abscissae.result[j.nonzero,3] + abscissae.result[j.nonzero,1]
+    
+    j.last <- j[j==length(cum.mass)]
+    # x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (delta.mass[j==length(cum.mass)] - tail(mass.grid, 1))) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
+    x.hat[j==length(cum.mass)] <- (log(abscissae.result[j.last,3] * (cdf[j==length(cum.mass)] - 1.0 + tail(as.vector(cdf.z),1))*as.integer((cdf[j==length(cum.mass)] - 1.0) <= 0)) - abscissae.result[j.last,2] - norm.constant)/abscissae.result[j.last,3] + abscissae.result[j.last,1]
+  }
+  
+  
+  
+  
+  
+  
+  return(x.hat)
+}
+
+
+# Inverse sampling function
+rs <- function(n.sim, S_inv, abscissae.result, z, norm.constant, lb, ub){
+  u.temp <- runif(n = n.sim)
+  x.temp <- S_inv(u.temp, abscissae.result, z, norm.constant, lb, ub)
+  return(x.temp)
+}
+
+
+#-------------------------------------------------------------------------------------------
+
+#----------------------------------------------
+#This function runs a binary search to find the chord we should use
+#to represent this point within the lower function. 
+
+binary <- function(Tk, sampledPoint){
+  return(findInterval(sampledPoint,Tk))
+}
+#-------------------------------------------------
+#This function runs the 'l' function.
+lowerbound <- function(x, coefficients, index){
+  if (index >= length(Tk) | index < 1){
+    lvalue <-NA
+  }else{
+    lvalue <- coefficients[index,1]*x + coefficients[index,2]
+  }
+  return(lvalue)
+}
+#-------------------------------------------------
+# This function updates the chords of the 'l' function with new Tk points.
+# The inputs are (sorted) Tk and the values of h at points of Tk respectively, 
+# represented as two vectors. 
+lupdater <- function(Tk,h_Tk){
+  k=length(Tk)
+  coefficients <- matrix(c((h_Tk[1:(k-1)]-h_Tk[2:k])/(Tk[1:(k-1)]-Tk[2:k])), k-1, 2, byrow = FALSE)
+  coefficients[,2] = h_Tk[1:(k-1)] - coefficients[,1]*Tk[1:(k-1)]
+  return(coefficients)
+}
+
+
+# This function performs the updating step.
+# The inputs are original_abs, which is a matrix of dimension k times 3, storing x,h,h'..
+# and the original coefficients matrix.
+# and the point to be added, x_star, and h_star=h(x_star), h_p_star = h'(x_star).
+# The outputs are the coordinates and derivative of abscissae with a new point added, as a matrix with three columns, each recording x_coord, y_coord and derivatives.
+update <- function(original_abs,x_star,h_star,h_deri_star){
+  #-----------------------------------------------------------------------------------------
+  # in case of exponential, directly not update
+  hp_T <- original_abs[,3]
+  names(hp_T) <- NULL
+  if( all.equal(hp_T, rep(hp_T[1], length(hp_T))) == TRUE ) { 
+    updated_abs <- original_abs
+  }else{
+    #-----------------------------------------------------------------------------------------
+    # Represent the information about x_star as a vector.
+    added_abs = c(x_star,h_star,h_deri_star)
+    # Add the new point to the original abscissae.
+    updated_abs = rbind(added_abs,original_abs)
+    # Sort by the x coordinates in ascending order.
+    updated_abs = updated_abs[order(updated_abs[,1]),]
+  } 
+  return(updated_abs)
+}
+
+
+# This function updates the coefficient matrix.
+update_coeff <- function(coefficients,x_star,updated_abscissae.result){
+  #-----------------------------------------------------------------------------------------
+  # in case of exponential, directly not update
+  hp_T <- updated_abscissae.result[,3]
+  names(hp_T) <- NULL
+  if( all.equal(hp_T, rep(hp_T[1], length(hp_T))) == TRUE ) { 
+    updated_coefficients <- coefficients 
+  }else{
+    #-----------------------------------------------------------------------------------------
+    # The index of the added point:
+    Tk = updated_abscissae.result[,1] 
+    h_Tk = updated_abscissae.result[,2] 
+    i_added = which(Tk == x_star)
+    h_star = h_Tk[i_added]
+    
+    # Update the coefficient matrix.
+    if(i_added<length(Tk) && i_added>1){
+      #     coefficients[i_added-1,1] <- (h_Tk[i_added-1]-h_Tk[i_added]) / (Tk[i_added-1]-Tk[i_added])   
+      #     coefficients[i_added-1,2] <- h_Tk[i_added-1] - coefficients[i_added-1,1] * Tk[i_added-1]
+      #     new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
+      #     new_row = c(new_x,h_star-new_x*x_star)
+      # updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row,
+      # coefficients[i_added:length(coefficients[,1]),])
+      new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
+      new_row = c(new_x,h_star-new_x*x_star)
+      if(i_added<=length(coefficients[,1])){
+        updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row,
+                                     coefficients[i_added:length(coefficients[,1]),])
+      }else{
+        updated_coefficients = rbind(coefficients[1:(i_added-1),],new_row)
+      }
+      updated_coefficients[i_added-1,1] <- (h_Tk[i_added-1]-h_Tk[i_added]) / (Tk[i_added-1]-Tk[i_added])   
+      updated_coefficients[i_added-1,2] <- h_Tk[i_added-1] - updated_coefficients[i_added-1,1] * Tk[i_added-1]
+      
+      #     updated_coefficients = rbind(coefficients[1:(i_added-2),],new_row,
+      #                                  coefficients[(i_added-1):length(coefficients[,1]),])
+      
+    }
+    
+    if(i_added == 1){
+      new_x = (h_star-h_Tk[i_added+1]) / (x_star-Tk[i_added+1])   
+      new_column = c(new_x,h_star-new_x*x_star)
+      updated_coefficients = rbind(new_column, coefficients)
+    }
+    if(i_added == length(Tk)){
+      new_x = (h_star-h_Tk[length(h_Tk)-1]) / (x_star-Tk[length(Tk)-1])   
+      new_column = c(new_x,h_star-new_x*x_star)
+      updated_coefficients = rbind(coefficients,new_column)
+    }
+  } 
+  return(updated_coefficients)
+}
+
+#This is the main engine.  It takes the log of a function (h), a required number of
+#values (n), and the number of points in the initial abscissae(k).  
+ars243 <- function(n, f = NULL, h = NULL, k, domain = c(-Inf, Inf)){
+  source('./u_method.R')
+  #-----------------------------------------------------------------------------------------
+  # Checking input validity
+  #-----------------------------------------------------------------------------------------
+  if(is.null(f) & is.null(h)){
+    stop('"f" and "h" are both missing. No default value.')
+  }else{
+    if(!is.null(f)){
+      if ( is.expression(f) ) {
+        f_exp <- f
+        f <- function(x) { eval(f_exp) }
+      }
+      if (!is.function(f)) {
+        stop( '"f" has to be either expr or function' )
+      }
+    }
+  }
+  if(k < 4){
+    k <- 4
+  }
+  
+  if(is.null(h)){
+    h <- function(x){
+      return(log(f(x)))
+    }
+  }
+  
+  lb <- domain[1]
+  ub <- domain[2]
+  #-----------------------------------------------------------------------------------------
+  # Main body
+  #-----------------------------------------------------------------------------------------
+  #'finalValues' will be what we return.  We initiate it empty.
+  finalValues <- c()
+  if (all.equal(domain, c(-Inf, Inf)) == TRUE){
+    abscissae.grid <- seq(-5, 5, length.out = k)
+  }else{
+    abscissae.grid <- seq(lb, ub, length.out = k + 2)
+    abscissae.grid <- abscissae.grid[abscissae.grid > lb & abscissae.grid < ub]
+  }
+  
+  abscissae.result <- gen.abscissae(abscissae.grid, h, lb, ub)
+  #-----------------------------------------------------------------------------------------
+  # If uniform
+  if(all(abscissae.result[,3] == 0)){
+    finalValues <- runif(n, min = lb, max = ub)
+    #-----------------------------------------------------------------------------------------
+  }else{
+    #-----------------------------------------------------------------------------------------
+    # Remove points where derivative is zero
+    if(sum(abscissae.result[,3] == 0) > 0){
+      abscissae.result <- abscissae.result[abscissae.result[,3] != 0,]
+    }
+    #-----------------------------------------------------------------------------------------
+    ############# Renee's function of check.log.concave #############
+    if(check.log.concave(abscissae.result) == FALSE){
+      # expand the grid
+      abscissae.grid <- seq(lb, ub, length.out = 2 * k)
+      abscissae.grid <- abscissae.grid[abscissae.grid > lb & abscissae.grid < ub]
+      abscissae.result <- gen.abscissae(abscissae.grid, h, lb, ub)
+      
+      if(check.log.concave(abscissae.result) == FALSE){
+        # If still not log concave
+        stop("f is not log-concave! Or k is too small.")
+      }
+    }
+    #################################################################
+    
+    Tk = abscissae.result[,1]
+    h_Tk = abscissae.result[,2]
+    #'Coefficients' are the slope and y intercept associated with each chord in the 'l'
+    #function  They are in a matrix that gets created by 'lupdater'.
+    coefficients <- lupdater(Tk,h_Tk)
+    # Run the code until we hit the desired length
+    while(length(finalValues) < n){
+      Tk = abscissae.result[,1]
+      h_Tk = abscissae.result[,2]
+      #Take a random point from the 'sk' function, known as 'rs'.
+      z = compute_z(abscissae.result)
+      norm.constant = compute_norm_constant(abscissae.result,z, lb, ub)
+      sampler <- rs(1, S_inv, abscissae.result, z, norm.constant, lb, ub)[1,1]
+      #If that point lies outside the bounds set by my Tk values
+      if(sampler < Tk[1] | sampler > Tk[length(Tk)]){
+        # In this case, we need to evalue h,h'
+        hValue <- h(sampler)
+        h.deriv <- grad(func = h, x = sampler)
+        
+        # Update abscissae.result and coefficients.
+        abscissae.result = update(abscissae.result,sampler,hValue,h.deriv)
+        # coefficients = update_coeff(coefficients,sampler,abscissae.result)
+        Tk = abscissae.result[,1]
+        h_Tk = abscissae.result[,2]
+        coefficients <- lupdater(Tk,h_Tk)
+        ############# Renee's function of check.log.concave #############
+        if(check.log.concave(abscissae.result) == FALSE){
+          stop("f is not log-concave!")
+        }
+        #################################################################
+        #First we run a binary search to find which chord the point finds itself within.
+        index <- (binary(Tk, sampler))
+        
+        #The value of the lower bound is calculated from this chord, found with binary.
+        lval <- lowerbound(sampler,coefficients,index)
+        
+        #The value of the upper bound is calculated by Wilson.
+        uval <- du.unnormalized(sampler, abscissae.result, z, lb, ub)
+        
+        #We also grab a number from the uniform distribution.
+        uniform <- runif(1)  
+        
+        hValue <- h(sampler)
+        h.deriv <- grad(func = h, x = sampler)
+        if(uniform <= exp(hValue - uval)){
+          finalValues <- c(finalValues, sampler)
+        }
+      }else{ 
+        #First we run a binary search to find which chord the point finds itself within.
+        index <- (binary(Tk, sampler))
+        
+        #The value of the lower bound is calculated from this chord, found with binary.
+        lval <- lowerbound(sampler,coefficients,index)
+        
+        #The value of the upper bound is calculated by Wilson.
+        uval <- du.unnormalized(sampler, abscissae.result, z, lb, ub)
+        
+        #We also grab a number from the uniform distribution.
+        uniform <- runif(1)  
+        
+        #The big IF statements, this one's the 'squeezing' step
+        if(uniform <= exp(lval - uval)){
+          finalValues <- c(finalValues, sampler)
+          
+        }else{
+          # Only evaluate the log of the function if we fail to squeeze.  Rejection step.
+          hValue <- h(sampler)
+          h.deriv <- grad(func = h, x = sampler)
+          abscissae.result = update(abscissae.result,sampler,hValue,h.deriv)
+          # coefficients = update_coeff(coefficients,sampler,abscissae.result)
+          Tk = abscissae.result[,1]
+          h_Tk = abscissae.result[,2]
+          coefficients <- lupdater(Tk,h_Tk)
+          if(uniform <= exp(hValue - uval)){
+            finalValues <- c(finalValues, sampler)
+            
+            ############# Renee's function of check.log.concave #############
+            if(check.log.concave(abscissae.result) == FALSE){
+              stop("f is not log-concave!")
+            }
+            #################################################################
+          }
+        }
+      }
+    }
+    #I was printing the length of Tk to see how many points I updated with (typically 
+    #it ends up being 15-30).
+    print(paste('Total number of abscissae grid point:', length(Tk)) )
+  }
+  return(finalValues)
+}
+
+```
+
+
+```{r, plots, echo = FALSE}
+set.seed(0)
+k=5
+h = function(x) log(dnorm(x, 0, 1))
+lb <- 0
+ub <- 1
+abscissae.grid <- seq(lb, ub, length.out = k)
+abscissae.grid <- abscissae.grid[abscissae.grid > lb & abscissae.grid < ub]
+abscissae.result <- gen.abscissae(abscissae.grid, h)
+Tk = abscissae.result[,1]
+h_Tk = abscissae.result[,2]
+coefficients <- lupdater(Tk,h_Tk)
+finalValues = c()
+
+
+#The value of the lower bound is calculated from this chord, found with binary.
+lvalf <- function(sampler){
+  index <- (binary(Tk, sampler))
+  lowerbound(sampler,coefficients,index)
+}
+#The value of the upper bound is calculated by Wilson.
+uvalf <- function(sampler) du.unnormalized(sampler, abscissae.result, compute_z(abscissae.result), lb, ub)
+
+first_step <- function(x) exp(lvalf(x) - uvalf(x))
+second_step <- function(x) exp(h(x) - uvalf(x))
+
+library(ggplot2)
+
+ggplot(data.frame(x=c(.25,.73)), aes(x)) +
+  stat_function(fun=first_step, geom="line", aes(colour="lower bound")) +
+  stat_function(fun=second_step, geom="line", aes(colour="upper bound")) 
+```
+
+And one more plot after updating once, thus adding a single Tk point.    
+```{r, ploterinos, echo = FALSE}
+set.seed(0)
+k=5
+h = function(x) log(dnorm(x, 0, 1))
+lb <- 0
+ub <- 1
+abscissae.grid <- seq(lb, ub, length.out = k)
+abscissae.grid <- abscissae.grid[abscissae.grid > lb & abscissae.grid < ub]
+abscissae.result <- gen.abscissae(abscissae.grid, h)
+abscissae.result = update(abscissae.result, .35, h(.35), grad(h, .35))
+Tk = abscissae.result[,1]
+h_Tk = abscissae.result[,2]
+coefficients <- lupdater(Tk,h_Tk)
+finalValues = c()
+
+
+#The value of the lower bound is calculated from this chord, found with binary.
+lvalf <- function(sampler){
+  index <- (binary(Tk, sampler))
+  lowerbound(sampler,coefficients,index)
+}
+#The value of the upper bound is calculated by Wilson.
+uvalf <- function(sampler) du.unnormalized(sampler, abscissae.result, compute_z(abscissae.result), lb, ub)
+
+first_step <- function(x) exp(lvalf(x) - uvalf(x))
+second_step <- function(x) exp(h(x) - uvalf(x))
+
+library(ggplot2)
+
+ggplot(data.frame(x=c(.25,.74)), aes(x)) +
+  stat_function(fun=first_step, geom="line", aes(colour="lower bound")) +
+  stat_function(fun=second_step, geom="line", aes(colour="upper bound")) 
+```
+
+
